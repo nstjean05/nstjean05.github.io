@@ -16,7 +16,7 @@
 
         // once assets are ready, use it
         document.querySelector('a-assets').addEventListener('loaded', () => {
-          document.getElementById('mySky')
+          document.getElementById('PGB_sphere')
             .setAttribute('material', 'src: #bricks');
         });
       });
@@ -25,7 +25,7 @@
         <img id="bricks" src="#bricks" crossorigin="anonymous">
       </a-assets>
     <a-scene>
-      <a-sphere  id="PGB sphere" position="0 2 -1.5" wireframe="false" rotation="0 0 0" 
+      <a-sphere  id="PGB_sphere" position="0 2 -1.5" wireframe="false" rotation="0 0 0" 
 	        src="#bricks"
 	  ></a-sphere>
     </a-scene>
