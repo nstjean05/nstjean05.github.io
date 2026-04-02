@@ -1,41 +1,35 @@
+<!-- note: this only worked on my localhost, was having some issues with the html file -->
+
 <!DOCTYPE html>
 <html>
-  <head>
-     <script src="https://aframe.io/releases/1.7.1/aframe.min.js" crossorigin="anonymous"></script>
-     
-     
-  </head>
-  <body>
-    <script>
-     document.addEventListener('DOMContentLoaded', () => {
-        const isLocal = ['localhost','127.0.0.1','[::1]'].includes(location.hostname);
-        const src = isLocal
-          ? 'http://localhost:8000/p01/IMAGES/Moving_Forest_1050_700.webp'
-          : './IMAGES/Moving_Forest_1050_700.webp';
+<head>
+  <script src="https://aframe.io/releases/1.7.1/aframe.min.js" crossorigin="anonymous"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const isLocal = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+      const src = isLocal
+        ? 'http://localhost:8000/p01/IMAGES/El_Capitan_Yosemite_73.jpg'
+        : './IMAGES/El_Capitan_Yosemite_73.jpg';
+      document.getElementById('forest').setAttribute('src', src);
+    });
+  </script>
+</head>
+<body>
+  <a-scene>
+    <a-assets>
+      <img id="forest" crossorigin="anonymous">
+    </a-assets>
 
-        const img = document.getElementById('forest');
-        img.setAttribute('src', src);        // set it
+    <a-sky id="mySky" src="#forest"></a-sky>
 
-        // once assets are ready, use it
-        document.querySelector('a-assets').addEventListener('loaded', () => {
-          document.getElementById('mySky')
-            .setAttribute('material', 'src: #forest');
-        });
-      });
-      </script>
-    <a-scene>
-      <a-assets>
-        <img id="forest"  crossorigin="anonymous"> <!-- src="http://localhost:8000/p01/IMAGES/Moving_Forest_1050_700.webp"-->
-      </a-assets>
-      <a-sky id="mySky"
-        src="#forest"	position="-2.5  0 -1.5"
-      ></a-sky>
-      <a-text
-        font="kelsonsans"
-        value="HELLO A-Frame!!!"
-        width="6"
-        position="-2.5  1.5 -2.5"  <!-- Position ! -->
-      ></a-text>
-    </a-scene>
-  </body>
+    <a-text
+      font="kelsonsans"
+      value="Behold El Cap!"
+      width="6"
+      position="-2.5 1.5 -10"
+
+      
+    ></a-text>
+  </a-scene>
+</body>
 </html>
