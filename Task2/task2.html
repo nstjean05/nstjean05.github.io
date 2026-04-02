@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8">
-    <title>Solar System - A-Frame</title>
+    <title>A-Frame Stellar System</title>
     <meta name="description" content="Interactive Solar System with A-Frame">
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.2.0/dist/aframe-extras.min.js"></script>
@@ -18,15 +18,16 @@
       <summary>Controls & Info</summary>
       <div id="info">
         <p>W/A/S/D - Move | P - Up | L - Down</p>
-        <p>Planets rotate while orbiting the Sun</p>
+        <p>Click scene first to enable controls</p>
       </div>
     </details>
 
     <a-scene background="color: #000000" physics="gravity: 0; debug: false">
-      
-      <!-- Camera with keyboard controls -->
-      <a-entity id="camera-rig" position="0 45 35" rotation="-45 0 0">
-        <a-camera 
+
+      <!-- Camera rig: wasd-controls on camera handles WASD natively -->
+      <!-- P/L vertical movement handled by custom tick on the rig -->
+      <a-entity id="camera-rig" position="0 15 80" rotation="-10 0 0">
+        <a-camera
           id="camera"
           position="0 0 0"
           look-controls
@@ -36,61 +37,58 @@
       </a-entity>
 
       <!-- Ambient Light -->
-      <a-light type="ambient" color="#ffffff" intensity="0.4"></a-light>
+      <a-light type="ambient" color="#ffffff" intensity="0.2"></a-light>
 
-      <!-- Point Light at Sun position (creates star-like effect) -->
+      <!-- Sky -->
+      <a-sky color="#0a0e27"></a-sky>
+
+      <!-- Reference grid plane -->
+      <a-plane
+        position="0 -40 0"
+        rotation="-90 0 0"
+        width="200"
+        height="200"
+        material="color: #222233; opacity: 0.2; transparent: true;"
+        segments-width="50"
+        segments-height="50">
+      </a-plane>
+
       <a-light id="sun-light" type="point" color="#ffffff" intensity="1.5" position="0 0 0" distance="400"></a-light>
 
       <!-- ===== SUN ===== -->
-      <!-- The Sun with color-changing animation -->
       <a-entity id="sun" position="0 0 0">
-        <a-sphere 
+        <a-sphere
           id="sun-sphere"
-          radius="2" 
-          segments-height="32" 
+          radius="2"
+          segments-height="32"
           segments-width="32"
           material="src: url(https://www.solarsystemscope.com/textures/download/2k_sun.jpg); emissive: #FDB813; emissiveIntensity: 0.8;">
         </a-sphere>
-
-        <!-- Glow effect for the sun -->
-        <a-sphere 
-          radius="2.3" 
-          segments-height="32" 
+        <a-sphere
+          radius="2.3"
+          segments-height="32"
           segments-width="32"
           material="color: #FDB813; opacity: 0.3; transparent: true; emissive: #FDB813; emissiveIntensity: 0.6;"
           animation="property: material.opacity; from: 0.3; to: 0.6; dur: 2000; dir: alternate; loop: true">
         </a-sphere>
-
-        <!-- Sun color-changing animation -->
-        <a-animation
-          attribute="light.color"
-          dur="8000"
-          from="#FDB813"
-          to="#FFE082"
-          dir="alternate"
-          loop="true">
-        </a-animation>
       </a-entity>
 
       <!-- ===== MERCURY (Orbit radius: 10) ===== -->
-      <a-entity id="mercury-orbit" position="0 0 0" rotation="0 0 0" animation="property: rotation; from: 0 0 0; to: 0 360 0; dur: 12000; loop: true; easing: linear;">
-        <a-entity 
+      <a-entity id="mercury-orbit" position="0 0 0" animation="property: rotation; from: 0 0 0; to: 0 360 0; dur: 12000; loop: true; easing: linear;">
+        <a-entity
           id="mercury"
           position="10 0 0"
           scale="0.4 0.4 0.4"
           animation="property: rotation; from: 0 0 0; to: 0 360 0; dur: 3000; loop: true; easing: linear;">
-          <a-sphere 
+          <a-sphere
             radius="1"
-            segments-height="32" 
+            segments-height="32"
             segments-width="32"
-            material="src: url(https://www.solarsystemscope.com/textures/download/2k_mercury.jpg);">
+            material="color: #888888;">
           </a-sphere>
         </a-entity>
-
-        <!-- Orbital path visualization -->
-        <a-circle 
-          id="mercury-path"
-          radius="10" 
+        <a-circle
+          radius="10"
           rotation="90 0 0"
           material="color: #888888; opacity: 0.3; transparent: true; shader: flat;"
           segments="64">
@@ -98,24 +96,21 @@
       </a-entity>
 
       <!-- ===== VENUS (Orbit radius: 16) ===== -->
-      <a-entity id="venus-orbit" position="0 0 0" rotation="0 0 0" animation="property: rotation; from: 0 0 0; to: 0 360 0; dur: 20000; loop: true; easing: linear;">
-        <a-entity 
+      <a-entity id="venus-orbit" position="0 0 0" animation="property: rotation; from: 0 0 0; to: 0 360 0; dur: 20000; loop: true; easing: linear;">
+        <a-entity
           id="venus"
           position="0 0 16"
           scale="0.7 0.7 0.7"
           animation="property: rotation; from: 0 0 0; to: 0 360 0; dur: 4000; loop: true; easing: linear;">
-          <a-sphere 
+          <a-sphere
             radius="1"
-            segments-height="32" 
+            segments-height="32"
             segments-width="32"
-            material="src: url(https://www.solarsystemscope.com/textures/download/2k_venus_surface.jpg);">
+            material="color: #FDB813;">
           </a-sphere>
         </a-entity>
-
-        <!-- Orbital path visualization -->
-        <a-circle 
-          id="venus-path"
-          radius="16" 
+        <a-circle
+          radius="16"
           rotation="90 0 0"
           material="color: #888888; opacity: 0.3; transparent: true; shader: flat;"
           segments="64">
@@ -123,24 +118,21 @@
       </a-entity>
 
       <!-- ===== EARTH (Orbit radius: 24) ===== -->
-      <a-entity id="earth-orbit" position="0 0 0" rotation="0 0 0" animation="property: rotation; from: 0 0 0; to: 0 360 0; dur: 32000; loop: true; easing: linear;">
-        <a-entity 
+      <a-entity id="earth-orbit" position="0 0 0" animation="property: rotation; from: 0 0 0; to: 0 360 0; dur: 32000; loop: true; easing: linear;">
+        <a-entity
           id="earth"
           position="-24 0 0"
           scale="0.8 0.8 0.8"
           animation="property: rotation; from: 0 0 0; to: 0 360 0; dur: 3500; loop: true; easing: linear;">
-          <a-sphere 
+          <a-sphere
             radius="1"
-            segments-height="32" 
+            segments-height="32"
             segments-width="32"
-            material="src: url(https://www.solarsystemscope.com/textures/download/2k_earth_daymap.jpg);">
+            material="color: #4488FF;">
           </a-sphere>
         </a-entity>
-
-        <!-- Orbital path visualization -->
-        <a-circle 
-          id="earth-path"
-          radius="24" 
+        <a-circle
+          radius="24"
           rotation="90 0 0"
           material="color: #888888; opacity: 0.3; transparent: true; shader: flat;"
           segments="64">
@@ -148,96 +140,159 @@
       </a-entity>
 
       <!-- ===== MARS (Orbit radius: 32) ===== -->
-      <a-entity id="mars-orbit" position="0 0 0" rotation="0 0 0" animation="property: rotation; from: 0 0 0; to: 0 360 0; dur: 45000; loop: true; easing: linear;">
-        <a-entity 
+      <a-entity id="mars-orbit" position="0 0 0" animation="property: rotation; from: 0 0 0; to: 0 360 0; dur: 45000; loop: true; easing: linear;">
+        <a-entity
           id="mars"
           position="0 0 -32"
           scale="0.55 0.55 0.55"
           animation="property: rotation; from: 0 0 0; to: 0 360 0; dur: 5000; loop: true; easing: linear;">
-          <a-sphere 
+          <a-sphere
             radius="1"
-            segments-height="32" 
+            segments-height="32"
             segments-width="32"
-            material="src: url(https://www.solarsystemscope.com/textures/download/2k_mars.jpg);">
+            material="color: #FF6644;">
           </a-sphere>
         </a-entity>
-
-        <!-- Orbital path visualization -->
-        <a-circle 
-          id="mars-path"
-          radius="32" 
+        <a-circle
+          radius="32"
           rotation="90 0 0"
           material="color: #888888; opacity: 0.3; transparent: true; shader: flat;"
           segments="64">
         </a-circle>
       </a-entity>
 
-      <!-- Jupiter (bonus 5th planet) (Orbit radius: 45) -->
-      <a-entity id="jupiter-orbit" position="0 0 0" rotation="0 0 0" animation="property: rotation; from: 0 0 0; to: 0 360 0; dur: 60000; loop: true; easing: linear;">
-        <a-entity 
+      <!-- ===== ASTEROID BELT (radii 36–42) ===== -->
+      <a-entity id="asteroid-belt">
+        <a-entity asteroid-belt></a-entity>
+      </a-entity>
+
+      <!-- ===== JUPITER (Orbit radius: 45) ===== -->
+      <a-entity id="jupiter-orbit" position="0 0 0" animation="property: rotation; from: 0 0 0; to: 0 360 0; dur: 60000; loop: true; easing: linear;">
+        <a-entity
           id="jupiter"
           position="32 0 32"
           scale="1.2 1.2 1.2"
           animation="property: rotation; from: 0 0 0; to: 0 360 0; dur: 6000; loop: true; easing: linear;">
-          <a-sphere 
+          <a-sphere
             radius="1"
-            segments-height="32" 
+            segments-height="32"
             segments-width="32"
-            material="src: url(https://www.solarsystemscope.com/textures/download/2k_jupiter.jpg);">
+            material="color: #FF9933;">
           </a-sphere>
         </a-entity>
-
-        <!-- Orbital path visualization -->
-        <a-circle 
-          id="jupiter-path"
-          radius="45" 
+        <a-circle
+          radius="45"
           rotation="90 0 0"
           material="color: #888888; opacity: 0.3; transparent: true; shader: flat;"
           segments="64">
         </a-circle>
       </a-entity>
 
-      <!-- Starfield background -->
-      <a-entity 
-        id="starfield"
-        geometry="primitive: sphere; radius: 500; segmentsHeight: 64; segmentsWidth: 64"
-        material="src: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==); color: #000000;">
-      </a-entity>
+      <!-- Starfield -->
+      <a-entity id="stars"></a-entity>
 
     </a-scene>
 
     <script>
-      // Enhanced controls and interactivity
-      document.addEventListener('DOMContentLoaded', function() {
+      AFRAME.registerComponent('asteroid-belt', {
+        init: function () {
+          const count = 280;
+          const innerR = 36;
+          const outerR = 42;
+
+          for (let i = 0; i < count; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const radius = innerR + Math.random() * (outerR - innerR);
+            const x = Math.cos(angle) * radius;
+            const z = Math.sin(angle) * radius;
+            const y = (Math.random() - 0.5) * 2.5;
+
+            const size = 0.08 + Math.random() * 0.22;
+
+            const asteroid = document.createElement('a-sphere');
+            asteroid.setAttribute('position', `${x} ${y} ${z}`);
+            asteroid.setAttribute('radius', size);
+            asteroid.setAttribute('segments-height', '6');
+            asteroid.setAttribute('segments-width', '6');
+
+            const grey = Math.floor(80 + Math.random() * 80);
+            asteroid.setAttribute('material', `color: rgb(${grey},${grey},${grey}); roughness: 1; metalness: 0`);
+
+            const orbitDur = 80000 + Math.random() * 60000;
+            const startAngle = Math.round(Math.random() * 360);
+            asteroid.setAttribute('animation', `property: rotation; from: 0 ${startAngle} 0; to: 0 ${startAngle + 360} 0; dur: ${orbitDur}; loop: true; easing: linear`);
+
+            this.el.appendChild(asteroid);
+          }
+        }
+      });
+    </script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
         const scene = document.querySelector('a-scene');
         const cameraRig = document.getElementById('camera-rig');
 
-        // Keyboard state tracking
-        const keys = {};
-        document.addEventListener('keydown', (e) => { keys[e.key.toLowerCase()] = true; });
-        document.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
-
-        // Camera movement speed
+        const vertKeys = { p: false, l: false };
         const moveSpeed = 0.3;
 
-        // Update loop for smooth camera movement
-        scene.addEventListener('tick', function() {
-          let pos = cameraRig.getAttribute('position');
-          let moved = false;
-
-          if (keys['w']) { pos.z -= moveSpeed; moved = true; }
-          if (keys['s']) { pos.z += moveSpeed; moved = true; }
-          if (keys['a']) { pos.x -= moveSpeed; moved = true; }
-          if (keys['d']) { pos.x += moveSpeed; moved = true; }
-          if (keys['p']) { pos.y += moveSpeed; moved = true; }
-          if (keys['l']) { pos.y -= moveSpeed; moved = true; }
-
-          if (moved) {
-            cameraRig.setAttribute('position', pos);
+        // Use window-level capture so these fire even when the A-Frame
+        // canvas holds focus and is consuming keyboard events
+        window.addEventListener('keydown', function (e) {
+          const k = e.key.toLowerCase();
+          if (k === 'p' || k === 'l') {
+            vertKeys[k] = true;
+            e.preventDefault();
           }
+        }, true);
+
+        window.addEventListener('keyup', function (e) {
+          const k = e.key.toLowerCase();
+          if (k === 'p' || k === 'l') {
+            vertKeys[k] = false;
+          }
+        }, true);
+
+        scene.addEventListener('tick', function () {
+          if (!vertKeys['p'] && !vertKeys['l']) return;
+          const pos = cameraRig.getAttribute('position');
+          if (vertKeys['p']) pos.y += moveSpeed;
+          if (vertKeys['l']) pos.y -= moveSpeed;
+          cameraRig.setAttribute('position', pos);
         });
 
-        console.log('Solar System initialized successfully!');
+        // Generate starfield
+        const starsContainer = document.getElementById('stars');
+        const starCount = 1500;
+        for (let i = 0; i < starCount; i++) {
+          const star = document.createElement('a-sphere');
+
+          // Random point on a large sphere surface
+          const theta = Math.random() * Math.PI * 2;
+          const phi = Math.acos(2 * Math.random() - 1);
+          const r = 450 + Math.random() * 40;
+          const x = r * Math.sin(phi) * Math.cos(theta);
+          const y = r * Math.sin(phi) * Math.sin(theta);
+          const z = r * Math.cos(phi);
+
+          const size = 0.3 + Math.random() * 0.9;
+          const brightness = Math.floor(180 + Math.random() * 75);
+          // Slight color variation — warm/cool tints
+          const tint = Math.random();
+          let color;
+          if (tint < 0.2) color = `rgb(${brightness}, ${brightness - 20}, ${Math.floor(brightness * 0.7)})`; // warm
+          else if (tint < 0.35) color = `rgb(${Math.floor(brightness * 0.8)}, ${Math.floor(brightness * 0.85)}, ${brightness})`; // cool blue
+          else color = `rgb(${brightness}, ${brightness}, ${brightness})`; // white
+
+          star.setAttribute('position', `${x} ${y} ${z}`);
+          star.setAttribute('radius', size);
+          star.setAttribute('segments-height', '4');
+          star.setAttribute('segments-width', '4');
+          star.setAttribute('material', `color: ${color}; emissive: ${color}; emissiveIntensity: 1; shader: flat`);
+
+          starsContainer.appendChild(star);
+        }
+
+        console.log('Solar System initialized.');
       });
     </script>
   </body>
