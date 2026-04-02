@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Solar System - A-Frame</title>
+    <meta name="description" content="Interactive Solar System with A-Frame">
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.2.0/dist/aframe-extras.min.js"></script>
+    <style>
+      html, body { margin: 0; height: 100%; overflow: hidden; }
+      #info { position: absolute; top: 20px; left: 20px; color: white; font-family: Arial; z-index: 10; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 5px; }
+    </style>
+  </head>
+  <body>
+    <div id="info">
+      <h3>Solar System</h3>
+      <p>Controls: W/A/S/D - Move | Space - Up | Meta - Down</p>
+      <p>Planets rotate while orbiting the Sun</p>
+    </div>
+
+    <a-scene background="color: #000000" physics="gravity: 0; debug: false">
+      
+      <!-- Camera with keyboard controls -->
+      <a-entity id="camera-rig" position="0 0 40">
+        <a-camera 
+          id="camera"
+          position="0 5 0"
+          look-controls
+          wasd-controls
+          user-height="0">
+        </a-camera>
+      </a-entity>
+
+      <!-- Ambient Light -->
+      <a-light type="ambient" color="#ffffff" intensity="0.4"></a-light>
+
+      <!-- Point Light at Sun position (creates star-like effect) -->
+      <a-light id="sun-light" type="point" color="#ffffff" intensity="1.5" position="0 0 0" distance="400"></a-light>
+
+      <!-- ===== SUN ===== -->
+      <!-- The Sun with color-changing animation -->
+      <a-entity id="sun" position="0 0 0">
+        <a-sphere 
+          id="sun-sphere"
+          radius="2" 
+          segments-height="32" 
+          segments-width="32"
+          material="src: url(https://www.solarsystemscope.com/textures/download/2k_sun.jpg); emissive: #FDB813; emissiveIntensity: 0.8;">
+        </a-sphere>
+
+        <!-- Glow effect for the sun -->
+        <a-sphere 
+          radius="2.3" 
+          segments-height="32" 
+          segments-width="32"
+          material="color: #FDB813; opacity: 0.3; transparent: true; emissive: #FDB813; emissiveIntensity: 0.6;"
+          animation="property: material.opacity; from: 0.3; to: 0.6; dur: 2000; dir: alternate; loop: true">
+        </a-sphere>
+
+        <!-- Sun color-changing animation -->
+        <a-animation
+          attribute="light.color"
+          dur="8000"
+          from="#FDB813"
+          to="#FFE082"
+          dir="alternate"
+          loop="true">
+        </a-animation>
+      </a-entity>
+
+      <!-- ===== MERCURY (Orbit radius: 10) ===== -->
+      <a-entity id="mercury-orbit" position="0 0 0" rotation="0 0 0">
+        <a-entity 
+          id="mercury"
+          position="10 0 0"
+          scale="0.4 0.4 0.4"
+          animation="property: rotation; from: 0 0 0; to: 0 360 0; dur: 3000; loop: true; easing: linear;">
+          <a-sphere 
+            radius="1"
+            segments-height="32" 
+            segments-width="32"
+            material="src: url(https://www.solarsystemscope.com/textures/download/2k_mercury.jpg);">
+          </a-sphere>
+        </a-entity>
+
+        <!-- Orbital path visualization -->
+        <a-circle 
+          id="mercury-path"
+          radius="10" 
+          rotation="90 0 0"
+          material="color: #888888; opacity: 0.3; transparent: true; shader: flat;"
+          segments="64">
+        </a-circle>
+
+        <!-- Mercury orbit animation -->
+        <a-animation
+          attribute="rotation"
+          from="0 0 0"
+          to="0 360 0"
+          dur="12000"
+          loop="true"
+          easing="linear">
+        </a-animation>
+      </a-entity>
+
+      <!-- ===== VENUS (Orbit radius: 16) ===== -->
+      <a-entity id="venus-orbit" position="0 0 0" rotation="0 0 0">
+        <a-entity 
+          id="venus"
+          position="16 0 0"
+          scale="0.7 0.7 0.7"
+          animation="property: rotation; from: 0 0 0; to: 0 360 0; dur: 4000; loop: true; easing: linear;">
+          <a-sphere 
+            radius="1"
+            segments-height="32" 
+            segments-width="32"
+            material="src: url(https://www.solarsystemscope.com/textures/download/2k_venus_surface.jpg);">
+          </a-sphere>
+        </a-entity>
+
+        <!-- Orbital path visualization -->
+        <a-circle 
+          id="venus-path"
+          radius="16" 
+          rotation="90 0 0"
+          material="color: #888888; opacity: 0.3; transparent: true; shader: flat;"
+          segments="64">
+        </a-circle>
+
+        <!-- Venus orbit animation -->
+        <a-animation
+          attribute="rotation"
+          from="0 0 0"
+          to="0 360 0"
+          dur="20000"
+          loop="true"
+          easing="linear">
+        </a-animation>
+      </a-entity>
+
+      <!-- ===== EARTH (Orbit radius: 24) ===== -->
+      <a-entity id="earth-orbit" position="0 0 0" rotation="0 0 0">
+        <a-entity 
+          id="earth"
+          position="24 0 0"
+          scale="0.8 0.8 0.8"
+          animation="property: rotation; from: 0 0 0; to: 0 360 0; dur: 3500; loop: true; easing: linear;">
+          <a-sphere 
+            radius="1"
+            segments-height="32" 
+            segments-width="32"
+            material="src: url(https://www.solarsystemscope.com/textures/download/2k_earth_daymap.jpg);">
+          </a-sphere>
+        </a-entity>
+
+        <!-- Orbital path visualization -->
+        <a-circle 
+          id="earth-path"
+          radius="24" 
+          rotation="90 0 0"
+          material="color: #888888; opacity: 0.3; transparent: true; shader: flat;"
+          segments="64">
+        </a-circle>
+
+        <!-- Earth orbit animation -->
+        <a-animation
+          attribute="rotation"
+          from="0 0 0"
+          to="0 360 0"
+          dur="32000"
+          loop="true"
+          easing="linear">
+        </a-animation>
+      </a-entity>
+
+      <!-- ===== MARS (Orbit radius: 32) ===== -->
+      <a-entity id="mars-orbit" position="0 0 0" rotation="0 0 0">
+        <a-entity 
+          id="mars"
+          position="32 0 0"
+          scale="0.55 0.55 0.55"
+          animation="property: rotation; from: 0 0 0; to: 0 360 0; dur: 5000; loop: true; easing: linear;">
+          <a-sphere 
+            radius="1"
+            segments-height="32" 
+            segments-width="32"
+            material="src: url(https://www.solarsystemscope.com/textures/download/2k_mars.jpg);">
+          </a-sphere>
+        </a-entity>
+
+        <!-- Orbital path visualization -->
+        <a-circle 
+          id="mars-path"
+          radius="32" 
+          rotation="90 0 0"
+          material="color: #888888; opacity: 0.3; transparent: true; shader: flat;"
+          segments="64">
+        </a-circle>
+
+        <!-- Mars orbit animation -->
+        <a-animation
+          attribute="rotation"
+          from="0 0 0"
+          to="0 360 0"
+          dur="45000"
+          loop="true"
+          easing="linear">
+        </a-animation>
+      </a-entity>
+
+      <!-- Jupiter (bonus 5th planet) (Orbit radius: 45) -->
+      <a-entity id="jupiter-orbit" position="0 0 0" rotation="0 0 0">
+        <a-entity 
+          id="jupiter"
+          position="45 0 0"
+          scale="1.2 1.2 1.2"
+          animation="property: rotation; from: 0 0 0; to: 0 360 0; dur: 6000; loop: true; easing: linear;">
+          <a-sphere 
+            radius="1"
+            segments-height="32" 
+            segments-width="32"
+            material="src: url(https://www.solarsystemscope.com/textures/download/2k_jupiter.jpg);">
+          </a-sphere>
+        </a-entity>
+
+        <!-- Orbital path visualization -->
+        <a-circle 
+          id="jupiter-path"
+          radius="45" 
+          rotation="90 0 0"
+          material="color: #888888; opacity: 0.3; transparent: true; shader: flat;"
+          segments="64">
+        </a-circle>
+
+        <!-- Jupiter orbit animation -->
+        <a-animation
+          attribute="rotation"
+          from="0 0 0"
+          to="0 360 0"
+          dur="60000"
+          loop="true"
+          easing="linear">
+        </a-animation>
+      </a-entity>
+
+      <!-- Starfield background -->
+      <a-entity 
+        id="starfield"
+        geometry="primitive: sphere; radius: 500; segmentsHeight: 64; segmentsWidth: 64"
+        material="src: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==); color: #000000;">
+      </a-entity>
+
+    </a-scene>
+
+    <script>
+      // Enhanced controls and interactivity
+      document.addEventListener('DOMContentLoaded', function() {
+        const scene = document.querySelector('a-scene');
+        const cameraRig = document.getElementById('camera-rig');
+
+        // Keyboard state tracking
+        const keys = {};
+        document.addEventListener('keydown', (e) => { keys[e.key.toLowerCase()] = true; });
+        document.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
+
+        // Camera movement speed
+        const moveSpeed = 0.3;
+
+        // Update loop for smooth camera movement
+        scene.addEventListener('tick', function() {
+          let pos = cameraRig.getAttribute('position');
+          let moved = false;
+
+          if (keys['w']) { pos.z -= moveSpeed; moved = true; }
+          if (keys['s']) { pos.z += moveSpeed; moved = true; }
+          if (keys['a']) { pos.x -= moveSpeed; moved = true; }
+          if (keys['d']) { pos.x += moveSpeed; moved = true; }
+          if (keys[' ']) { pos.y += moveSpeed; moved = true; }
+          if (keys['meta'] || keys['control']) { pos.y -= moveSpeed; moved = true; }
+
+          if (moved) {
+            cameraRig.setAttribute('position', pos);
+          }
+        });
+
+        console.log('Solar System initialized successfully!');
+      });
+    </script>
+  </body>
+</html>
