@@ -14,13 +14,15 @@
 			
 			console.log("init 2");
 			
+			// Array of colors to cycle through
+			const colors = ['orange', 'yellow', 'purple', 'cyan', 'pink'];
+			let colorIndex = 0;
+			
 			this.toggleColor = function() { // adding a method
-				
-				el.setAttribute('color','orange');
-				
-				console.log("toggleColor event");
-				alert("clicked");
-				
+				el.setAttribute('color', colors[colorIndex]);
+				colorIndex = (colorIndex + 1) % colors.length;
+				console.log("toggleColor event - new color: " + colors[(colorIndex - 1) % colors.length]);
+				alert("clicked - color changed to " + colors[(colorIndex - 1) % colors.length]);
 			};
 			
 			this.el.addEventListener('click', this.toggleColor, { passive: true });
@@ -36,8 +38,8 @@
 	  <a-scene  cursor="rayOrigin: mouse;" raycaster="objects: .rayclick;">
 		
 			<a-box id="one" position="-2 0 -7" color="red" class="rayclick" my-color-toggle></a-box>
-			<a-box id="two" position="0 0 -7" color="blue"></a-box>
-			<a-box id="three" position="2 0 -7" color="green"></a-box>
+			<a-box id="two" position="0 0 -7" color="blue" class="rayclick" my-color-toggle></a-box>
+			<a-box id="three" position="2 0 -7" color="green" class="rayclick" my-color-toggle></a-box>
 			<a-entity raycaster="objects: .one" cursor></a-entity>
 			<a-sphere position="1 5 -2" geometry="radius: 0.5" class="clickable" color="blue"></a-sphere>
 		
@@ -45,3 +47,5 @@
 	
   </body>
 </html>
+
+<!-- Worked when run on localhost -->
