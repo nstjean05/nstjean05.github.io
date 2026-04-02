@@ -1,0 +1,32 @@
+
+<!--
+Goal: Learn about CORS (Cross-Origin Resource Sharing) for A-Frame
+Exercise: Load a 360° aerial image of Seattle as a-sky
+
+When opened directly from the browser (file://), observe CORS errors in console.
+This demonstrates why A-Frame needs a proxy or server for loading external images.
+
+References:
+- VR Photography: https://en.wikipedia.org/wiki/VR_photography
+- Example 360° image: https://commons.wikimedia.org/wiki/File:Rainbow_on_the_Azores_%E2%80%93_360%C2%B0_drone_shot.jpg
+- CORS explanation: https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS
+-->
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>A-Frame Sky Exercise - Seattle</title>
+    <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
+  </head>
+  <body>
+    <a-scene>
+      <!-- Try opening this file directly (file://) to see CORS errors in the console -->
+      <a-sky src="./IMAGES/Seattle_Downtown_Aerial,_May_2024.jpg"></a-sky>
+    </a-scene>
+
+    <!-- Debug console message -->
+    <script>
+      console.log("Opening file directly? Check the browser console for CORS errors.");
+      console.log("Solution: Use a local server (python -m http.server) or CORS proxy");
+    </script>
+  </body>
+</html>
