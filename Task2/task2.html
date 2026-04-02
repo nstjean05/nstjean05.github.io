@@ -8,14 +8,19 @@
     <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.2.0/dist/aframe-extras.min.js"></script>
     <style>
       html, body { margin: 0; height: 100%; overflow: hidden; }
-      #info { position: absolute; top: 20px; left: 20px; color: white; font-family: Arial; z-index: 10; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 5px; }
+      details { position: absolute; top: 20px; left: 20px; color: white; font-family: Arial; z-index: 10; background: rgba(0,0,0,0.7); padding: 10px; border-radius: 5px; }
+      summary { cursor: pointer; font-weight: bold; }
+      summary::-webkit-details-marker { color: white; }
     </style>
   </head>
   <body>
-    <div id="info">
-      <h3>Assignment 7, Task 2: Model Stellar System</h3>
-      <p>Controls: W/A/S/D - Move | P - Up | L - Down</p>
-    </div>
+    <details open>
+      <summary>Controls & Info</summary>
+      <div id="info">
+        <p>W/A/S/D - Move | P - Up | L - Down</p>
+        <p>Planets rotate while orbiting the Sun</p>
+      </div>
+    </details>
 
     <a-scene background="color: #000000" physics="gravity: 0; debug: false">
       
