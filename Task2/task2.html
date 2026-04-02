@@ -38,7 +38,8 @@
 
       <!-- Sun -->
       <a-sphere radius="3" segments-height="32" segments-width="32"
-        material="src: url(./2k_sun.jpg); emissive: #FDB813; emissiveIntensity: 0.8;">
+        material="src: url(./2k_sun.jpg); emissive: #FDB813; emissiveIntensity: 0.8;"
+        animation="property: material.emissive; from: #FDB813; to: #FF4400; dur: 8000; dir: alternate; loop: true">
       </a-sphere>
       <!-- sun glow -->
       <a-sphere radius="3.5" segments-height="32" segments-width="32"
