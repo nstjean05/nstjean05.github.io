@@ -1,0 +1,1523 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>COSMIS — Cosmic Serpent Odyssey</title>
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; background: #000; overflow: hidden; font-family: 'Exo 2', sans-serif; }
+
+    #mainScene {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    #starsCanvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* Top progress bar */
+    #levelBarContainer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 10px;
+      background: rgba(255,255,255,0.08);
+      z-index: 160;
+      pointer-events: none;
+    }
+    #levelBar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #4af, #0ff);
+      transition: width 0.15s linear, background 0.2s linear;
+    }
+
+    /* HUD */
+    #hud {
+      position: fixed;
+      top: 18px;
+      left: 0;
+      right: 0;
+      z-index: 150;
+      pointer-events: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 0 20px;
+    }
+    .hud-panel {
+      background: rgba(0,5,20,0.7);
+      border: 1px solid rgba(100,180,255,0.3);
+      border-radius: 8px;
+      padding: 8px 16px;
+      color: #7df;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      min-width: 110px;
+    }
+    .hud-panel .val { font-size: 22px; font-weight: 700; color: #aef; display: block; }
+    #levelBadge { color: #fa0; }
+
+    #boostBar {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 150;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    #boostBarInner {
+      width: 160px;
+      height: 8px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(100,180,255,0.3);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    #boostBarFill {
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(90deg, #4af, #0ff);
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+    #boostLabel { color: rgba(150,220,255,0.6); font-size: 10px; letter-spacing: 0.15em; font-family: 'Orbitron', sans-serif; }
+
+    /* Minimap */
+    #minimap {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 130px;
+      height: 130px;
+      background: rgba(0,5,20,0.75);
+      border: 1px solid rgba(100,180,255,0.3);
+      border-radius: 50%;
+      z-index: 150;
+      overflow: hidden;
+    }
+
+    /* Screens */
+    .screen {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      color: #fff;
+    }
+    .screen.hidden { display: none; }
+
+    #flashScreen { background: radial-gradient(ellipse at center, #000820 0%, #000 100%); }
+    #flashScreen h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(3rem, 8vw, 6rem);
+      font-weight: 900;
+      color: #fff;
+      letter-spacing: 0.15em;
+      text-shadow: 0 0 40px #4af, 0 0 80px #07f;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    #flashScreen .subtitle {
+      font-family: 'Exo 2', sans-serif;
+      font-size: 1.1rem;
+      color: #7df;
+      letter-spacing: 0.3em;
+      margin-top: 8px;
+      text-transform: uppercase;
+      text-align: center;
+    }
+    #flashScreen .credit {
+      margin-top: 40px;
+      color: rgba(150,200,255,0.6);
+      font-size: 0.9rem;
+      letter-spacing: 0.1em;
+      text-align: center;
+      line-height: 1.6;
+    }
+    #flashScreen .credit strong { color: #aef; }
+    #flashScreen .enter {
+      margin-top: 50px;
+      color: rgba(150,200,255,0.5);
+      font-size: 0.85rem;
+      letter-spacing: 0.25em;
+      animation: blink 1.5s step-end infinite;
+    }
+    @keyframes pulse {
+      0%,100% { text-shadow: 0 0 40px #4af, 0 0 80px #07f; }
+      50% { text-shadow: 0 0 60px #8cf, 0 0 120px #4af, 0 0 180px #07f; }
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    #setupScreen, #manualScreen {
+      background: rgba(0,5,20,0.95);
+      backdrop-filter: blur(10px);
+    }
+    #setupScreen h2 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 2rem;
+      color: #aef;
+      letter-spacing: 0.2em;
+      margin-bottom: 32px;
+      text-transform: uppercase;
+    }
+    .setup-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 360px;
+      max-width: 88vw;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(100,180,255,0.15);
+      color: #9bc;
+      font-size: 0.95rem;
+      letter-spacing: 0.08em;
+      gap: 12px;
+    }
+    .toggle {
+      width: 48px;
+      height: 26px;
+      border-radius: 13px;
+      background: rgba(100,180,255,0.2);
+      border: 1px solid #4af;
+      cursor: pointer;
+      position: relative;
+      transition: background 0.2s;
+      flex: 0 0 auto;
+    }
+    .toggle.on { background: rgba(0,180,255,0.5); }
+    .toggle::after {
+      content: '';
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #fff;
+      top: 2px;
+      left: 3px;
+      transition: left 0.2s;
+    }
+    .toggle.on::after { left: 25px; }
+    .diff-btn {
+      padding: 6px 14px;
+      border-radius: 4px;
+      cursor: pointer;
+      border: 1px solid #4af;
+      background: transparent;
+      color: #7df;
+      font-family: 'Exo 2', sans-serif;
+      font-size: 0.85rem;
+      letter-spacing: 0.08em;
+      transition: all 0.2s;
+    }
+    .diff-btn.active { background: rgba(0,150,255,0.4); color: #fff; }
+
+    .btn {
+      background: linear-gradient(135deg, #0af, #07f);
+      border: none;
+      padding: 14px 48px;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      cursor: pointer;
+      border-radius: 6px;
+      color: #000;
+      margin-top: 32px;
+      transition: transform 0.15s, box-shadow 0.15s;
+      box-shadow: 0 0 20px rgba(0,150,255,0.4);
+    }
+    .btn:hover { transform: scale(1.05); box-shadow: 0 0 32px rgba(0,200,255,0.6); }
+
+    #menuScreen { background: radial-gradient(ellipse at center, #000820 0%, #000 100%); }
+    #menuScreen h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(2.5rem, 6vw, 4.5rem);
+      font-weight: 900;
+      color: #fff;
+      letter-spacing: 0.15em;
+      text-shadow: 0 0 30px #4af, 0 0 60px #07f;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+    #menuScreen p {
+      color: #7df;
+      letter-spacing: 0.2em;
+      font-size: 0.9rem;
+      margin-bottom: 8px;
+      text-align: center;
+      max-width: 92vw;
+    }
+    .menu-btns { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid rgba(100,180,255,0.5);
+      padding: 10px 28px;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.8rem;
+      letter-spacing: 0.12em;
+      color: #7df;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 0.2s;
+    }
+    .btn-outline:hover { background: rgba(0,150,255,0.2); border-color: #4af; color: #fff; }
+
+    #deathScreen {
+      background: rgba(20,0,0,0.85);
+      backdrop-filter: blur(8px);
+    }
+    #deathScreen h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(2.5rem, 6vw, 4rem);
+      color: #f44;
+      text-shadow: 0 0 30px #f00;
+      letter-spacing: 0.1em;
+      text-align: center;
+    }
+    #levelClearScreen {
+      background: rgba(0,10,30,0.85);
+      backdrop-filter: blur(8px);
+    }
+    #levelClearScreen h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      color: #4af;
+      text-shadow: 0 0 30px #07f;
+      letter-spacing: 0.1em;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+    .stats { margin: 20px 0; text-align: center; color: #7df; font-size: 1.1rem; line-height: 2; }
+    .stats span { color: #aef; font-weight: 600; }
+
+    #manualScreen {
+      overflow-y: auto;
+      padding: 40px 20px;
+      align-items: flex-start;
+      justify-content: flex-start;
+    }
+    #manualInner { max-width: 700px; margin: 0 auto; }
+    #manualInner h1 { font-family:'Orbitron',sans-serif; color:#aef; font-size:2rem; margin-bottom:24px; }
+    #manualInner h2 { font-family:'Orbitron',sans-serif; color:#7df; font-size:1.1rem; margin: 24px 0 10px; letter-spacing:0.1em; }
+    #manualInner p, #manualInner li { color:#9bc; line-height:1.8; font-size:0.95rem; }
+    #manualInner ul, #manualInner ol { padding-left:20px; }
+    #manualInner li { margin-bottom:6px; }
+    #manualInner kbd {
+      background: rgba(100,180,255,0.15);
+      border:1px solid #4af;
+      border-radius:3px;
+      padding:2px 7px;
+      font-size:0.85rem;
+      color:#aef;
+    }
+    #manualInner .back-btn { margin-top:32px; }
+    #manualInner .section { margin-bottom:28px; padding-bottom:28px; border-bottom:1px solid rgba(100,180,255,0.1); }
+
+    .gazeTarget { display: none; }
+  </style>
+</head>
+<body>
+
+<canvas id="starsCanvas"></canvas>
+<div id="levelBarContainer"><div id="levelBar"></div></div>
+
+<div class="screen" id="flashScreen">
+  <h1>COSMIS</h1>
+  <div class="subtitle">A Cosmic Serpent Odyssey</div>
+  <div class="credit">
+    Developed by <strong>Noah St-Jean</strong><br>
+    CMPT 461 — Immersive Computing · Trinity Western University · 2026
+  </div>
+  <div class="enter">CLICK ANYWHERE TO CONTINUE</div>
+</div>
+
+<div class="screen hidden" id="menuScreen">
+  <h1>COSMIS</h1>
+  <p>Grow. Devour. Dominate the cosmos.</p>
+  <div class="menu-btns">
+    <button class="btn" id="playBtn">ENTER NEBULA</button>
+  </div>
+  <div class="menu-btns" style="margin-top:12px;">
+    <button class="btn-outline" id="setupBtn">SETUP</button>
+    <button class="btn-outline" id="manualBtn">MANUAL</button>
+  </div>
+</div>
+
+<div class="screen hidden" id="setupScreen">
+  <h2>Mission Setup</h2>
+  <div class="setup-row"><span>Background Music</span><div class="toggle on" id="musicToggle"></div></div>
+  <div class="setup-row"><span>Sound Effects</span><div class="toggle on" id="sfxToggle"></div></div>
+  <div class="setup-row">
+    <span>Difficulty</span>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+      <button class="diff-btn active" data-diff="easy">CADET</button>
+      <button class="diff-btn" data-diff="normal">PILOT</button>
+      <button class="diff-btn" data-diff="hard">ACE</button>
+    </div>
+  </div>
+  <div class="setup-row"><span>VR Mode (Stereoscopic)</span><div class="toggle" id="vrToggle"></div></div>
+  <div class="setup-row"><span>A/D Steering</span><div class="toggle on" id="adToggle"></div></div>
+  <button class="btn" id="setupDoneBtn">CONFIRM</button>
+</div>
+
+<div class="screen hidden" id="manualScreen">
+  <div id="manualInner">
+    <h1>COSMIS — Mission Manual</h1>
+
+    <div class="section">
+      <h2>About</h2>
+      <p>COSMIS is a cosmic serpent survival game built with A-Frame for desktop and mobile VR. Guide your serpent through the nebula, devouring stardust and energy orbs to grow. Outmanoeuvre rival serpents and survive long enough to advance through the deeper sectors of the cosmos.</p>
+    </div>
+
+    <div class="section">
+      <h2>Installation</h2>
+      <ol>
+        <li>No installation required — runs entirely in a modern web browser.</li>
+        <li>Open this file in Chrome, Firefox, or Edge.</li>
+        <li>For VR mode: enable Stereoscopic in Setup, then open on a mobile device and insert into a Google Cardboard-compatible headset.</li>
+        <li>Tap the VR icon (bottom-right of the A-Frame scene) to enter stereoscopic view.</li>
+      </ol>
+    </div>
+
+    <div class="section">
+      <h2>Controls — Desktop</h2>
+      <ul>
+        <li><kbd>A</kbd> / <kbd>D</kbd> — Turn left / right</li>
+        <li><kbd>Mouse</kbd> — Steer (move mouse left/right)</li>
+        <li><kbd>Space</kbd> — Boost (costs mass — drops stardust behind you)</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Controls — Mobile VR (Gaze)</h2>
+      <ul>
+        <li><strong>Gaze left / right</strong> — Look left or right to steer your serpent in that direction</li>
+        <li><strong>Gaze down</strong> — Tilt your head down to activate boost</li>
+        <li>No hand controllers required — fully gaze-driven</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Gameplay</h2>
+      <ul>
+        <li>Fly through the nebula and collect glowing <strong>stardust orbs</strong> to grow your serpent.</li>
+        <li>Grow longer to grow <em>wider</em> — your mass increases with length.</li>
+        <li>Rival serpents die if their head collides with your body. You die if your head hits theirs.</li>
+        <li>Use the progress bar at the top to see how close you are to the next level.</li>
+        <li>Do not leave the nebula boundary — the void will destroy you.</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Scoring</h2>
+      <ul>
+        <li>Score = current serpent length</li>
+        <li>Defeated serpents scatter stardust you can collect for a mass bonus</li>
+        <li>Kill counter tracked throughout your run</li>
+      </ul>
+    </div>
+
+    <div class="section">
+      <h2>Levels</h2>
+      <ul>
+        <li><strong>Level 1 — Nebula Cloud:</strong> Open arena, gentle rivals, abundant stardust.</li>
+        <li><strong>Level 2 — Asteroid Drift:</strong> More rivals, slightly scarcer stardust.</li>
+        <li><strong>Level 3 — Ion Belt:</strong> Faster rivals and a tighter survival window.</li>
+        <li><strong>Level 4 — Rift Swarm:</strong> Heavier density and more pressure to boost smartly.</li>
+        <li><strong>Level 5 — Nova Run:</strong> Large rivals, tighter space, harsher resource economy.</li>
+        <li><strong>Level 6 — Void Crown:</strong> Final, extreme difficulty sector with the most aggressive encounters.</li>
+      </ul>
+    </div>
+
+    <button class="btn back-btn" id="manualBackBtn">BACK</button>
+  </div>
+</div>
+
+<div id="hud">
+  <div class="hud-panel">Mass<span class="val" id="scoreVal">0</span></div>
+  <div class="hud-panel" id="levelBadge">Level<span class="val" id="levelVal">1</span></div>
+  <div class="hud-panel">Kills<span class="val" id="killsVal">0</span></div>
+</div>
+
+<div id="minimap"><canvas id="mmCanvas" width="130" height="130"></canvas></div>
+
+<div id="boostBar">
+  <div id="boostBarInner"><div id="boostBarFill"></div></div>
+  <div id="boostLabel">BOOST</div>
+</div>
+
+<div class="screen hidden" id="deathScreen">
+  <h1>OBLITERATED</h1>
+  <div class="stats">
+    Final Mass: <span id="finalScore">0</span><br>
+    Rivals Defeated: <span id="finalKills">0</span><br>
+    Level Reached: <span id="finalLevel">1</span>
+  </div>
+  <button class="btn" id="rejoinBtn">TRY AGAIN</button>
+  <button class="btn-outline" style="margin-top:12px;" id="menuFromDeathBtn">MAIN MENU</button>
+</div>
+
+<div class="screen hidden" id="levelClearScreen">
+  <h1>SECTOR CLEARED</h1>
+  <p style="color:#7df;letter-spacing:0.2em;font-family:'Exo 2',sans-serif;text-align:center;max-width:90vw;">Preparing the next region…</p>
+  <div class="stats">Mass: <span id="clearScore">0</span></div>
+  <button class="btn" id="nextLevelBtn">ENGAGE</button>
+</div>
+
+<div class="screen hidden" id="victoryScreen">
+  <h1>MISSION COMPLETE</h1>
+  <div class="stats">
+    Final Mass: <span id="victoryScore">0</span><br>
+    Rivals Defeated: <span id="victoryKills">0</span>
+  </div>
+  <button class="btn" id="victoryMenuBtn">MAIN MENU</button>
+</div>
+
+<a-scene id="mainScene" renderer="antialias:true;colorManagement:true" vr-mode-ui="enabled:true">
+  <a-assets id="assets">
+    <img id="texEarth"   src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Earthmap1000x500.jpg/1024px-Earthmap1000x500.jpg" crossorigin="anonymous">
+    <img id="texMars"    src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Marssurface.jpg/1024px-Marssurface.jpg" crossorigin="anonymous">
+    <img id="texJupiter" src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Jupiter_and_its_shrunken_Great_Red_Spot.jpg/1024px-Jupiter_and_its_shrunken_Great_Red_Spot.jpg" crossorigin="anonymous">
+    <img id="texMoon"    src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/FullMoon2010.jpg/1024px-FullMoon2010.jpg" crossorigin="anonymous">
+    <img id="texSun"     src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b4/The_Sun_by_the_Atmospheric_Imaging_Assembly_of_NASA%27s_Solar_Dynamics_Observatory_-_20100819.jpg/1024px-The_Sun_by_the_Atmospheric_Imaging_Assembly_of_NASA%27s_Solar_Dynamics_Observatory_-_20100819.jpg" crossorigin="anonymous">
+    <img id="texNebula"  src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/00/Crab_Nebula.jpg/1024px-Crab_Nebula.jpg" crossorigin="anonymous">
+    <img id="texRock"    src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Granite_closeup.jpg/640px-Granite_closeup.jpg" crossorigin="anonymous">
+  </a-assets>
+
+  <a-entity light="type:ambient;color:#0a0a20;intensity:2"></a-entity>
+  <a-entity light="type:directional;color:#aaccff;intensity:0.8" position="10 20 10"></a-entity>
+  <a-entity id="playerLight" light="type:point;color:#4af;intensity:12;distance:80"></a-entity>
+
+  <a-sky id="skyBox" src="#texNebula" rotation="0 0 0" opacity="0.35" color="#000820"></a-sky>
+
+  <a-entity id="floorContainer"></a-entity>
+  <a-entity id="orbContainer"></a-entity>
+  <a-entity id="snakeContainer"></a-entity>
+  <a-entity id="obstacleContainer"></a-entity>
+
+  <a-entity id="cameraRig" position="0 45 0">
+    <a-camera id="cam" look-controls="enabled:false" wasd-controls="enabled:false" rotation="-90 0 0">
+      <a-cursor id="gazeCursor" fuse="false" raycaster="objects:.gazeTarget" color="#4af" opacity="0.8" position="0 0 -1" geometry="primitive:ring;radiusInner:0.01;radiusOuter:0.015" material="color:#4af;shader:flat"></a-cursor>
+    </a-camera>
+  </a-entity>
+
+  <a-entity id="gazeLeft" class="gazeTarget" position="-1 0 -2" visible="false"></a-entity>
+  <a-entity id="gazeRight" class="gazeTarget" position="1 0 -2" visible="false"></a-entity>
+</a-scene>
+
+<audio id="bgMusic" loop>
+  <source src="https://www.soundjay.com/misc/sounds/space-ambient-01.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+//  COSMIS — Full fixed build
+// ═══════════════════════════════════════════════════════════════════
+
+// ── Constants ─────────────────────────────────────────────────────
+const BORDER_RADIUS = 220;
+const BASE_RADIUS = 0.5;
+const MAX_NPCS_L1 = 12;
+const MAX_NPCS_L2 = 16;
+const INITIAL_ORBS = 900;
+const MAX_ORBS = 1200;
+const ASTEROID_COUNT = 40;
+const LEVEL2_THRESHOLD = 60;
+const MAX_LEVEL = 6;
+
+const BASE_TURN_SPEED = 0.08;
+const MIN_TURN_SPEED = 0.038;
+const TURN_SCALE = 120;
+const HITBOX_MULT = 0.85;
+const WIDTH_UPDATE_INTERVAL = 4;
+const GRID_CELL = 12;
+
+const PLANET_TEXTURES = ['#texEarth', '#texMars', '#texJupiter', '#texMoon', '#texSun'];
+const NPC_COLORS = ['#ff6644','#4488ff','#ffdd22','#ff44cc','#ff9922','#22ddff','#ff7788','#88ff44'];
+const ORB_COLORS = ['#88ccff','#ffdd88','#ff88cc','#88ffcc','#ccaaff','#ffffff'];
+
+// Level tuning. Higher levels are harder.
+const LEVELS = [
+  { target: 60,  npcCount: 12, npcSpeed: 0.17, orbMult: 1.25, levelName: 'Nebula Cloud',  asteroid: false, asteroidCount: 0,  asteroidSpeed: 0 },
+  { target: 120, npcCount: 14, npcSpeed: 0.19, orbMult: 1.10, levelName: 'Asteroid Drift', asteroid: true,  asteroidCount: 8,  asteroidSpeed: 0.012 },
+  { target: 200, npcCount: 16, npcSpeed: 0.21, orbMult: 1.00, levelName: 'Ion Belt',       asteroid: true,  asteroidCount: 14, asteroidSpeed: 0.016 },
+  { target: 320, npcCount: 20, npcSpeed: 0.23, orbMult: 0.90, levelName: 'Rift Swarm',      asteroid: true,  asteroidCount: 20, asteroidSpeed: 0.020 },
+  { target: 500, npcCount: 24, npcSpeed: 0.26, orbMult: 0.80, levelName: 'Nova Run',        asteroid: true,  asteroidCount: 28, asteroidSpeed: 0.025 },
+  { target: 760, npcCount: 28, npcSpeed: 0.29, orbMult: 0.70, levelName: 'Void Crown',      asteroid: true,  asteroidCount: 36, asteroidSpeed: 0.031 },
+];
+
+const DIFF = {
+  easy:   { npcSpeedMult: 0.90, npcCountBonus: 0, orbMultBonus: 0.15 },
+  normal: { npcSpeedMult: 1.00, npcCountBonus: 0, orbMultBonus: 0.00 },
+  hard:   { npcSpeedMult: 1.12, npcCountBonus: 2, orbMultBonus: -0.20 },
+};
+
+// ── Settings ──────────────────────────────────────────────────────
+const settings = {
+  music: true,
+  sfx: true,
+  difficulty: 'easy',
+  vr: false,
+  adSteer: true,
+};
+
+// ── State ─────────────────────────────────────────────────────────
+let running = false;
+let currentLevel = 1;
+let player = null;
+let npcs = [];
+let orbs = [];
+let asteroids = [];
+let keys = { a: false, d: false, boost: false };
+let playerAngle = 0;
+let frameCount = 0;
+let totalKills = 0;
+let mouseDX = 0;
+let boostFuel = 100;
+let npcIndex = 0;
+let spatialGrid = {};
+let audioCtx = null;
+let bgOsc = null;
+let bgGain = null;
+let gazeBoostActive = false;
+const pendingWidthFlush = new Set();
+
+// ── Stars background ──────────────────────────────────────────────
+(function initStars() {
+  const canvas = document.getElementById('starsCanvas');
+  const ctx = canvas.getContext('2d');
+  let stars = [];
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    stars = Array.from({ length: 300 }, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      r: Math.random() * 1.2 + 0.2,
+      a: Math.random(),
+      da: (Math.random() - 0.5) * 0.008,
+    }));
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (const s of stars) {
+      s.a = Math.max(0.1, Math.min(1, s.a + s.da));
+      if (s.a <= 0.1 || s.a >= 1) s.da *= -1;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(200,220,255,${s.a})`;
+      ctx.fill();
+    }
+    requestAnimationFrame(draw);
+  }
+
+  window.addEventListener('resize', resize);
+  resize();
+  draw();
+})();
+
+// ── Screen helpers ────────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+  if (id) document.getElementById(id).classList.remove('hidden');
+}
+
+function setVRMode(enabled) {
+  const cam = document.getElementById('cam');
+  if (!cam) return;
+
+  settings.vr = enabled;
+  cam.setAttribute('look-controls', `enabled:${enabled}`);
+  cam.setAttribute('wasd-controls', 'enabled:false');
+  cam.setAttribute('rotation', '-90 0 0');
+  gazeBoostActive = false;
+}
+
+// ── Audio ─────────────────────────────────────────────────────────
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function syncMusic() {
+  if (!running) return;
+  if (!settings.music) {
+    if (bgGain) bgGain.gain.setTargetAtTime(0.0001, getAudioCtx().currentTime, 0.2);
+    return;
+  }
+
+  const ctx = getAudioCtx();
+  if (!bgOsc) {
+    bgOsc = ctx.createOscillator();
+    bgGain = ctx.createGain();
+    bgOsc.type = 'sine';
+    bgOsc.frequency.value = 52;
+    bgGain.gain.value = 0.0001;
+    bgOsc.connect(bgGain);
+    bgGain.connect(ctx.destination);
+    bgOsc.start();
+  }
+  bgGain.gain.setTargetAtTime(0.03, ctx.currentTime, 0.3);
+}
+
+function playSFX(type) {
+  if (!settings.sfx) return;
+  try {
+    const ctx = getAudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    if (type === 'eat') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(520, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+      osc.start(); osc.stop(ctx.currentTime + 0.12);
+    } else if (type === 'kill') {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(220, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(55, ctx.currentTime + 0.3);
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+      osc.start(); osc.stop(ctx.currentTime + 0.3);
+    } else if (type === 'boost') {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(300, ctx.currentTime);
+      gain.gain.setValueAtTime(0.05, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08);
+      osc.start(); osc.stop(ctx.currentTime + 0.08);
+    } else if (type === 'die') {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(440, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(40, ctx.currentTime + 0.6);
+      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+      osc.start(); osc.stop(ctx.currentTime + 0.6);
+    } else if (type === 'levelup') {
+      const freqs = [523, 659, 784, 1047];
+      freqs.forEach((f, i) => {
+        const o2 = ctx.createOscillator();
+        const g2 = ctx.createGain();
+        o2.connect(g2);
+        g2.connect(ctx.destination);
+        o2.type = 'sine';
+        o2.frequency.value = f;
+        const t = ctx.currentTime + i * 0.12;
+        g2.gain.setValueAtTime(0.2, t);
+        g2.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+        o2.start(t); o2.stop(t + 0.18);
+      });
+    }
+  } catch (e) {}
+}
+
+// ── Helpers ───────────────────────────────────────────────────────
+function getTurnSpeed(score) {
+  const t = score / (score + TURN_SCALE);
+  return BASE_TURN_SPEED - (BASE_TURN_SPEED - MIN_TURN_SPEED) * t;
+}
+function calcRadius(score) { return BASE_RADIUS + score * 0.012; }
+function getCircularPos(radius) {
+  const r = Math.sqrt(Math.random()) * radius;
+  const theta = Math.random() * Math.PI * 2;
+  return { x: Math.cos(theta) * r, z: Math.sin(theta) * r };
+}
+function getLevelData() {
+  return LEVELS[Math.min(currentLevel - 1, LEVELS.length - 1)];
+}
+
+function scheduleWidthUpdate(snake) {
+  const newR = calcRadius(snake.score);
+  if (newR === snake.currentRadius) return;
+  snake.currentRadius = newR;
+  pendingWidthFlush.add(snake);
+}
+
+function flushWidthUpdates() {
+  for (const snake of pendingWidthFlush) {
+    const r = snake.currentRadius;
+    for (const seg of snake.segments) {
+      if (seg.renderedRadius !== r) {
+        if (seg.el) seg.el.setAttribute('radius', r);
+        seg.renderedRadius = r;
+      }
+    }
+  }
+  pendingWidthFlush.clear();
+}
+
+// ── Spatial grid ──────────────────────────────────────────────────
+function gridKey(x, z) { return `${Math.floor(x / GRID_CELL)}_${Math.floor(z / GRID_CELL)}`; }
+function buildSpatialGrid() {
+  spatialGrid = {};
+  if (player && !player.dead) {
+    for (let i = 1; i < player.segments.length; i++) {
+      const seg = player.segments[i];
+      const key = gridKey(seg.x, seg.z);
+      if (!spatialGrid[key]) spatialGrid[key] = [];
+      spatialGrid[key].push({ seg, snake: player, index: i });
+    }
+  }
+  for (const npc of npcs) {
+    if (npc.dead) continue;
+    for (let i = 1; i < npc.segments.length; i++) {
+      const seg = npc.segments[i];
+      const key = gridKey(seg.x, seg.z);
+      if (!spatialGrid[key]) spatialGrid[key] = [];
+      spatialGrid[key].push({ seg, snake: npc, index: i });
+    }
+  }
+}
+function nearbySegments(x, z) {
+  const cx = Math.floor(x / GRID_CELL), cz = Math.floor(z / GRID_CELL);
+  const results = [];
+  for (let dx = -1; dx <= 1; dx++) {
+    for (let dz = -1; dz <= 1; dz++) {
+      const bucket = spatialGrid[`${cx + dx}_${cz + dz}`];
+      if (bucket) for (const e of bucket) results.push(e);
+    }
+  }
+  return results;
+}
+
+// ── Arena ─────────────────────────────────────────────────────────
+function initArena(level) {
+  const floor = document.getElementById('floorContainer');
+  floor.innerHTML = '';
+
+  const disc = document.createElement('a-circle');
+  disc.setAttribute('rotation', '-90 0 0');
+  disc.setAttribute('radius', BORDER_RADIUS);
+  disc.setAttribute('material', level === 1
+    ? 'src:#texNebula;opacity:0.18;color:#001030'
+    : 'src:#texRock;opacity:0.12;color:#0a0510;repeat:20 20');
+  floor.appendChild(disc);
+
+  const wallSegs = 120;
+  for (let i = 0; i < wallSegs; i++) {
+    const a1 = (i / wallSegs) * Math.PI * 2;
+    const a2 = ((i + 1) / wallSegs) * Math.PI * 2;
+    const x1 = Math.cos(a1) * BORDER_RADIUS, z1 = Math.sin(a1) * BORDER_RADIUS;
+    const x2 = Math.cos(a2) * BORDER_RADIUS, z2 = Math.sin(a2) * BORDER_RADIUS;
+    const wall = document.createElement('a-box');
+    const midX = (x1 + x2) / 2, midZ = (z1 + z2) / 2;
+    const segLen = Math.hypot(x2 - x1, z2 - z1);
+    const wallAngle = Math.atan2(z2 - z1, x2 - x1) * 180 / Math.PI;
+    wall.setAttribute('position', `${midX} 1 ${midZ}`);
+    wall.setAttribute('rotation', `0 ${-wallAngle} 0`);
+    wall.setAttribute('width', segLen + 0.2);
+    wall.setAttribute('height', 5);
+    wall.setAttribute('depth', 1);
+    const col = level === 1 ? '#0055ff' : '#aa2200';
+    wall.setAttribute('material', `color:${col};emissive:${col};emissiveIntensity:1;transparent:true;opacity:0.7`);
+    floor.appendChild(wall);
+  }
+
+  const obs = document.getElementById('obstacleContainer');
+  obs.innerHTML = '';
+  asteroids = [];
+  const lvlData = getLevelData();
+  if (lvlData.asteroid) {
+    for (let i = 0; i < lvlData.asteroidCount; i++) {
+      const pos = getCircularPos(BORDER_RADIUS * 0.85);
+      if (Math.hypot(pos.x, pos.z) < 20) { i--; continue; }
+      const sz = 2 + Math.random() * 4;
+      const ast = document.createElement('a-sphere');
+      ast.setAttribute('radius', sz);
+      ast.setAttribute('position', `${pos.x} 0 ${pos.z}`);
+      ast.setAttribute('material', 'src:#texRock;roughness:1;metalness:0');
+      ast.setAttribute('rotation', `${Math.random()*360} ${Math.random()*360} ${Math.random()*360}`);
+      obs.appendChild(ast);
+      asteroids.push({
+        el: ast,
+        x: pos.x,
+        z: pos.z,
+        r: sz,
+        vx: (Math.random() - 0.5) * lvlData.asteroidSpeed,
+        vz: (Math.random() - 0.5) * lvlData.asteroidSpeed,
+        spinX: (Math.random() - 0.5) * 0.5,
+        spinY: (Math.random() - 0.5) * 0.8,
+        spinZ: (Math.random() - 0.5) * 0.5,
+      });
+    }
+  }
+}
+
+// ── Snake factory ─────────────────────────────────────────────────
+function pickTexture(isPlayer, index) {
+  if (isPlayer) return PLANET_TEXTURES[0];
+  return PLANET_TEXTURES[(index % (PLANET_TEXTURES.length - 1)) + 1];
+}
+
+function createSegmentEl(texture, color, radius) {
+  const s = document.createElement('a-sphere');
+  s.setAttribute('radius', radius);
+  s.setAttribute('material', `src:${texture};emissive:${color};emissiveIntensity:0.25;roughness:0.7;metalness:0.1`);
+  return s;
+}
+
+let npcSpawnCounter = 0;
+function createSnake(isPlayer, startX, startZ, tex) {
+  const container = document.getElementById('snakeContainer');
+  const color = isPlayer ? '#44bbff' : NPC_COLORS[npcSpawnCounter % NPC_COLORS.length];
+  const texture = tex || pickTexture(isPlayer, npcSpawnCounter);
+  npcSpawnCounter++;
+
+  const snake = {
+    segments: [],
+    score: 8,
+    color,
+    texture,
+    angle: Math.random() * Math.PI * 2,
+    isPlayer,
+    dead: false,
+    currentRadius: BASE_RADIUS,
+    lastWidthScore: 0,
+    boostDrainTimer: 0,
+  };
+
+  for (let i = 0; i < 8; i++) {
+    const s = createSegmentEl(texture, color, BASE_RADIUS);
+    container.appendChild(s);
+    const seg = {
+      el: s,
+      x: startX - i * BASE_RADIUS,
+      z: startZ,
+      renderedRadius: BASE_RADIUS,
+    };
+    if (s.object3D) s.object3D.position.set(seg.x, BASE_RADIUS, seg.z);
+    snake.segments.push(seg);
+  }
+  return snake;
+}
+
+// ── Spawn / reset ─────────────────────────────────────────────────
+function spawnPlayer() {
+  const pos = getCircularPos(40);
+  player = createSnake(true, pos.x, pos.z, PLANET_TEXTURES[0]);
+  playerAngle = Math.random() * Math.PI * 2;
+  document.getElementById('deathScreen').classList.remove('show');
+  const head = player.segments[0];
+  document.getElementById('cameraRig').object3D.position.set(head.x, 45, head.z);
+  document.getElementById('playerLight').object3D.position.set(head.x, 6, head.z);
+}
+function spawnNPC() {
+  const pos = getCircularPos(BORDER_RADIUS * 0.75);
+  const npc = createSnake(false, pos.x, pos.z);
+  npcs.push(npc);
+}
+function spawnOrb(x, z, isLoot = false, lootColor = '#88ccff') {
+  if (x === undefined) {
+    const pos = getCircularPos(BORDER_RADIUS - 5);
+    x = pos.x; z = pos.z;
+  }
+  const color = isLoot ? lootColor : ORB_COLORS[Math.floor(Math.random() * ORB_COLORS.length)];
+  const radius = isLoot ? 0.55 : (0.18 + Math.random() * 0.22);
+  const o = document.createElement('a-sphere');
+  o.setAttribute('radius', radius);
+  o.setAttribute('position', `${x} 0.3 ${z}`);
+  o.setAttribute('material', `color:${color};emissive:${color};emissiveIntensity:${isLoot ? 1.8 : 2.5};transparent:true;opacity:0.92`);
+  document.getElementById('orbContainer').appendChild(o);
+  orbs.push({ el: o, x, z, value: isLoot ? 3 : 1 });
+}
+
+function clearWorld() {
+  ['orbContainer', 'snakeContainer', 'obstacleContainer'].forEach(id => {
+    const c = document.getElementById(id);
+    while (c.firstChild) c.removeChild(c.firstChild);
+  });
+  orbs = [];
+  npcs = [];
+  asteroids = [];
+  frameCount = 0;
+  totalKills = 0;
+  npcSpawnCounter = 0;
+  boostFuel = 100;
+  spatialGrid = {};
+  pendingWidthFlush.clear();
+}
+
+function startGame(level) {
+  clearWorld();
+  currentLevel = level;
+  initArena(level);
+  spawnPlayer();
+
+  const lvlData = getLevelData();
+  const diff = DIFF[settings.difficulty];
+  const npcCount = Math.max(1, Math.floor(lvlData.npcCount * diff.npcCountBonus + lvlData.npcCount));
+  const adjustedSpeed = lvlData.npcSpeed * diff.npcSpeedMult;
+  const orbCount = Math.floor(INITIAL_ORBS * (lvlData.orbMult + diff.orbMultBonus));
+
+  // store per-level npc speed in a place the loop can read without extra branching
+  startGame.npcSpeed = adjustedSpeed;
+
+  for (let i = 0; i < npcCount; i++) spawnNPC();
+  for (let i = 0; i < orbCount; i++) spawnOrb();
+
+  document.getElementById('levelVal').textContent = currentLevel;
+  document.getElementById('killsVal').textContent = '0';
+  document.getElementById('scoreVal').textContent = '8';
+  document.getElementById('levelBar').style.width = '0%';
+  document.getElementById('boostBarFill').style.width = '100%';
+  document.getElementById('boostBarFill').style.background = 'linear-gradient(90deg,#4af,#0ff)';
+
+  running = true;
+  showScreen(null);
+  setVRMode(settings.vr);
+  syncMusic();
+  updateSnakeSegments(player);
+  requestAnimationFrame(gameLoop);
+}
+
+// ── Segment movement ──────────────────────────────────────────────
+function updateSnakeSegments(snake) {
+  const segDist = snake.currentRadius;
+  const segs = snake.segments;
+  const n = segs.length;
+  const y = snake.currentRadius;
+
+  for (let i = n - 1; i > 0; i--) {
+    const seg = segs[i], prev = segs[i - 1];
+    const dx = prev.x - seg.x, dz = prev.z - seg.z;
+    const d = Math.sqrt(dx * dx + dz * dz);
+    if (d > segDist) {
+      const m = (d - segDist) / d;
+      seg.x += dx * m;
+      seg.z += dz * m;
+    }
+    if (seg.el.object3D) seg.el.object3D.position.set(seg.x, y, seg.z);
+  }
+  const head = segs[0];
+  if (head.el.object3D) head.el.object3D.position.set(head.x, y, head.z);
+}
+
+// ── Growth / shrink ───────────────────────────────────────────────
+function growSnake(snake, amount = 1) {
+  const container = document.getElementById('snakeContainer');
+  const last = snake.segments[snake.segments.length - 1];
+  const r = snake.currentRadius;
+
+  for (let i = 0; i < amount; i++) {
+    const s = createSegmentEl(snake.texture, snake.color, r);
+    container.appendChild(s);
+    snake.segments.push({ el: s, x: last.x, z: last.z, renderedRadius: r });
+    snake.score++;
+  }
+
+  const threshold = snake.lastWidthScore + WIDTH_UPDATE_INTERVAL;
+  if (snake.score >= threshold) {
+    snake.lastWidthScore = snake.score;
+    scheduleWidthUpdate(snake);
+  }
+}
+
+function shrinkSnake(snake) {
+  if (snake.segments.length <= 6) return;
+  const tail = snake.segments.pop();
+  const ox = tail.x, oz = tail.z;
+  if (tail.el && tail.el.parentNode) tail.el.parentNode.removeChild(tail.el);
+  snake.score = Math.max(1, snake.score - 1);
+
+  if (orbs.length < MAX_ORBS) {
+    const o = document.createElement('a-sphere');
+    o.setAttribute('radius', 0.18);
+    o.setAttribute('position', `${ox} 0.3 ${oz}`);
+    o.setAttribute('material', `color:${snake.color};emissive:${snake.color};emissiveIntensity:2`);
+    document.getElementById('orbContainer').appendChild(o);
+    orbs.push({ el: o, x: ox, z: oz, value: 1 });
+  }
+
+  const threshold = snake.lastWidthScore - WIDTH_UPDATE_INTERVAL;
+  if (snake.score <= threshold) {
+    snake.lastWidthScore = snake.score;
+    scheduleWidthUpdate(snake);
+  }
+}
+
+// ── Collisions ────────────────────────────────────────────────────
+function checkOrbCollisions(snake) {
+  const head = snake.segments[0];
+  const grabRange = snake.currentRadius + 0.8;
+  const grabRange2 = grabRange * grabRange;
+  let ate = false;
+
+  for (let i = orbs.length - 1; i >= 0; i--) {
+    const o = orbs[i];
+    const dx = head.x - o.x, dz = head.z - o.z;
+    if (dx * dx + dz * dz < grabRange2) {
+      if (o.el && o.el.parentNode) o.el.remove();
+      const val = o.value || 1;
+      orbs.splice(i, 1);
+      growSnake(snake, val);
+      ate = true;
+    }
+  }
+  if (ate && snake.isPlayer) playSFX('eat');
+}
+
+function ensureOrbCapacity(extraNeeded = 1) {
+  const room = MAX_ORBS - orbs.length;
+  if (room >= extraNeeded) return;
+
+  const toRemove = Math.min(orbs.length, extraNeeded - room);
+  for (let i = 0; i < toRemove; i++) {
+    const old = orbs.shift();
+    if (old && old.el && old.el.parentNode) old.el.parentNode.removeChild(old.el);
+  }
+}
+
+function dropLootFromSnake(snake) {
+  const segs = snake.segments;
+  if (!segs.length) return;
+
+  // Ensure there is room so death loot always appears.
+  const lootCount = Math.min(Math.floor(segs.length * 1.5), 80);
+  ensureOrbCapacity(lootCount);
+
+  const step = Math.max(1, Math.floor(segs.length / lootCount));
+  for (let i = 0; i < segs.length; i++) {
+    if (i % step !== 0) continue;
+
+    let ox = segs[i].x, oz = segs[i].z;
+    if (segs[i].el && segs[i].el.object3D) {
+      ox = segs[i].el.object3D.position.x;
+      oz = segs[i].el.object3D.position.z;
+    }
+    spawnOrb(ox + (Math.random() - 0.5), oz + (Math.random() - 0.5), true, snake.color);
+  }
+}
+
+function killSnake(snake) {
+  if (snake.dead) return;
+  snake.dead = true;
+
+  if (snake.segments.length) {
+    dropLootFromSnake(snake);
+  }
+
+  const segs = snake.segments;
+  for (let i = 0; i < segs.length; i++) {
+    if (segs[i].el && segs[i].el.parentNode) segs[i].el.parentNode.removeChild(segs[i].el);
+  }
+  snake.segments = [];
+
+  if (snake.isPlayer) {
+    playSFX('die');
+    running = false;
+    document.getElementById('finalScore').textContent = snake.score;
+    document.getElementById('finalKills').textContent = totalKills;
+    document.getElementById('finalLevel').textContent = currentLevel;
+    showScreen('deathScreen');
+  } else {
+    npcs = npcs.filter(n => n !== snake);
+    setTimeout(() => { if (running) spawnNPC(); }, 5000 + Math.random() * 5000);
+  }
+}
+
+function severSnakeFromIndex(snake, hitIndex) {
+  if (!snake || snake.dead || hitIndex <= 0) return;
+  const removed = snake.segments.splice(hitIndex);
+  if (!removed.length) return;
+
+  for (const seg of removed) {
+    if (seg.el && seg.el.parentNode) seg.el.parentNode.removeChild(seg.el);
+  }
+
+  snake.score = Math.max(1, snake.score - removed.length);
+
+  const lootEvery = Math.max(1, Math.floor(removed.length / 4));
+  for (let i = 0; i < removed.length; i += lootEvery) {
+    const seg = removed[i];
+    if (seg && orbs.length < MAX_ORBS) {
+      spawnOrb(seg.x + (Math.random() - 0.5), seg.z + (Math.random() - 0.5), true, snake.color);
+    }
+  }
+
+  snake.lastWidthScore = snake.score;
+  scheduleWidthUpdate(snake);
+}
+
+function checkAsteroidCollisions() {
+  if (!asteroids.length) return;
+
+  for (const ast of asteroids) {
+    ast.x += ast.vx;
+    ast.z += ast.vz;
+
+    const dist = Math.hypot(ast.x, ast.z);
+    if (dist > BORDER_RADIUS - ast.r - 5) {
+      const nx = ast.x / dist;
+      const nz = ast.z / dist;
+      const dot = ast.vx * nx + ast.vz * nz;
+      ast.vx -= 2 * dot * nx;
+      ast.vz -= 2 * dot * nz;
+      ast.x = nx * (BORDER_RADIUS - ast.r - 6);
+      ast.z = nz * (BORDER_RADIUS - ast.r - 6);
+    }
+
+    if (ast.el && ast.el.object3D) {
+      ast.el.object3D.position.set(ast.x, 0, ast.z);
+      ast.el.object3D.rotation.x += ast.spinX;
+      ast.el.object3D.rotation.y += ast.spinY;
+      ast.el.object3D.rotation.z += ast.spinZ;
+    }
+
+    const nearby = nearbySegments(ast.x, ast.z);
+    for (const { seg, snake, index } of nearby) {
+      if (!snake || snake.dead) continue;
+      if (index <= 0) continue;
+      const hitR = ast.r + snake.currentRadius;
+      const dx = ast.x - seg.x, dz = ast.z - seg.z;
+      if (dx * dx + dz * dz < hitR * hitR) {
+        severSnakeFromIndex(snake, index);
+        break;
+      }
+    }
+  }
+}
+
+function checkBodyCollisions() {
+  const allSnakes = [];
+  if (player && !player.dead) allSnakes.push(player);
+  for (const n of npcs) if (!n.dead) allSnakes.push(n);
+
+  for (const attacker of allSnakes) {
+    if (attacker.dead) continue;
+    const head = attacker.segments[0];
+    const aR = attacker.currentRadius;
+    const nearby = nearbySegments(head.x, head.z);
+
+    for (const { seg, snake: victim } of nearby) {
+      if (victim === attacker || victim.dead) continue;
+      const threshold = (aR + victim.currentRadius) * HITBOX_MULT;
+      const dx = head.x - seg.x, dz = head.z - seg.z;
+      if (dx * dx + dz * dz < threshold * threshold) {
+        if (attacker.isPlayer) {
+          killSnake(player);
+          return;
+        } else {
+          killSnake(attacker);
+          if (victim.isPlayer) { totalKills++; playSFX('kill'); }
+          break;
+        }
+      }
+    }
+  }
+}
+
+// ── Level progression ─────────────────────────────────────────────
+function checkLevelProgress() {
+  if (!player || player.dead) return;
+  const lvl = getLevelData();
+  if (currentLevel < MAX_LEVEL && player.score >= lvl.target) {
+    running = false;
+    document.getElementById('clearScore').textContent = player.score;
+    showScreen('levelClearScreen');
+    playSFX('levelup');
+  } else if (currentLevel >= MAX_LEVEL && player.score >= lvl.target) {
+    running = false;
+    document.getElementById('victoryScore').textContent = player.score;
+    document.getElementById('victoryKills').textContent = totalKills;
+    showScreen('victoryScreen');
+    playSFX('levelup');
+  }
+}
+
+function updateLevelBar() {
+  if (!player || player.dead) return;
+  const lvl = getLevelData();
+  const progress = Math.min(player.score / lvl.target, 1);
+  const bar = document.getElementById('levelBar');
+  if (bar) {
+    bar.style.width = (progress * 100) + '%';
+    if (progress > 0.8) bar.style.background = 'linear-gradient(90deg,#ffcc00,#ff4444)';
+    else bar.style.background = 'linear-gradient(90deg,#4af,#0ff)';
+  }
+}
+
+function nextLevel() {
+  if (currentLevel < MAX_LEVEL) {
+    currentLevel++;
+    startGame(currentLevel);
+  }
+}
+
+// ── Minimap ───────────────────────────────────────────────────────
+function drawMinimap() {
+  const ctx = document.getElementById('mmCanvas').getContext('2d');
+  ctx.clearRect(0, 0, 130, 130);
+  const scale = 62 / BORDER_RADIUS;
+
+  ctx.strokeStyle = 'rgba(100,180,255,0.5)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(65, 65, 62, 0, Math.PI * 2);
+  ctx.stroke();
+
+  for (const o of orbs) {
+    ctx.fillStyle = 'rgba(150,220,255,0.3)';
+    ctx.beginPath();
+    ctx.arc(65 + o.x * scale, 65 + o.z * scale, 1, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  for (const n of npcs) {
+    if (!n.dead && n.segments.length) {
+      ctx.fillStyle = n.color;
+      ctx.beginPath();
+      ctx.arc(65 + n.segments[0].x * scale, 65 + n.segments[0].z * scale, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  if (player && !player.dead && player.segments.length) {
+    ctx.fillStyle = '#fff';
+    ctx.shadowColor = '#4af';
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    ctx.arc(65 + player.segments[0].x * scale, 65 + player.segments[0].z * scale, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+}
+
+// ── VR / gaze steering ────────────────────────────────────────────
+function updateGazeSteering() {
+  gazeBoostActive = false;
+  if (!settings.vr) return;
+  if (!player || player.dead) return;
+  const cam = document.getElementById('cam');
+  if (!cam || !cam.object3D) return;
+
+  const dir = new THREE.Vector3();
+  cam.object3D.getWorldDirection(dir);
+  dir.y = 0;
+
+  if (dir.lengthSq() > 0.0001) {
+    const desired = Math.atan2(dir.x, dir.z);
+    let gd = desired - playerAngle;
+    while (gd > Math.PI) gd -= Math.PI * 2;
+    while (gd < -Math.PI) gd += Math.PI * 2;
+
+    const ts = getTurnSpeed(player.score);
+    if (Math.abs(gd) > 0.12) playerAngle += Math.sign(gd) * ts * 0.6;
+  }
+
+  gazeBoostActive = cam.object3D.rotation.x < -1.85;
+}
+
+// ── Main loop ────────────────────────────────────────────────────
+function gameLoop() {
+  if (!running) return;
+  frameCount++;
+
+  if (player && !player.dead) {
+    const ts = getTurnSpeed(player.score);
+    if (settings.adSteer) {
+      if (keys.a) playerAngle -= ts;
+      if (keys.d) playerAngle += ts;
+    }
+    if (mouseDX !== 0) {
+      playerAngle += mouseDX * ts * 0.8;
+      mouseDX = 0;
+    }
+
+    updateGazeSteering();
+
+    const pHead = player.segments[0];
+    const baseSpeed = Math.max(0.18, 0.28 - player.score * 0.0005);
+
+    if (keys.boost && boostFuel > 0) {
+      boostFuel = Math.max(0, boostFuel - 0.6);
+    } else if (!keys.boost) {
+      boostFuel = Math.min(100, boostFuel + 0.3);
+    }
+    const requestedBoost = keys.boost || gazeBoostActive;
+    const actuallyBoosting = requestedBoost && boostFuel > 0;
+    const speed = actuallyBoosting ? baseSpeed * 2.0 : baseSpeed;
+
+    if (actuallyBoosting && player.segments.length > 6) {
+      player.boostDrainTimer++;
+      if (player.boostDrainTimer >= 10) {
+        player.boostDrainTimer = 0;
+        shrinkSnake(player);
+        if (frameCount % 3 === 0) playSFX('boost');
+      }
+    } else {
+      player.boostDrainTimer = 0;
+    }
+
+    document.getElementById('boostBarFill').style.width = boostFuel + '%';
+    document.getElementById('boostBarFill').style.background =
+      actuallyBoosting ? 'linear-gradient(90deg,#f80,#ff4)' : 'linear-gradient(90deg,#4af,#0ff)';
+
+    pHead.x += Math.cos(playerAngle) * speed;
+    pHead.z += Math.sin(playerAngle) * speed;
+    updateSnakeSegments(player);
+
+    const rig = document.getElementById('cameraRig');
+    const camHeight = 45 + player.score * 0.22;
+    rig.object3D.position.set(pHead.x, camHeight, pHead.z);
+    document.getElementById('playerLight').object3D.position.set(pHead.x, 6, pHead.z);
+
+    if (Math.hypot(pHead.x, pHead.z) > BORDER_RADIUS) { killSnake(player); return; }
+    for (const ast of asteroids) {
+      const dx = pHead.x - ast.x, dz = pHead.z - ast.z;
+      if (dx * dx + dz * dz < (ast.r + player.currentRadius) * (ast.r + player.currentRadius)) {
+        killSnake(player);
+        return;
+      }
+    }
+  }
+
+  const lvlData = getLevelData();
+  const diff = DIFF[settings.difficulty];
+  const npcSpeed = lvlData.npcSpeed * diff.npcSpeedMult;
+
+  for (const npc of npcs) {
+    if (npc.dead) continue;
+    const nHead = npc.segments[0];
+    const nts = getTurnSpeed(npc.score);
+
+    if (Math.hypot(nHead.x, nHead.z) > BORDER_RADIUS - 15) {
+      npc.angle = Math.atan2(-nHead.z, -nHead.x) + (Math.random() - 0.5) * 0.5;
+    } else if (Math.random() < 0.03) {
+      npc.angle += (Math.random() - 0.5) * (nts / BASE_TURN_SPEED) * 1.5;
+    }
+
+    if (currentLevel >= 3 && player && !player.dead && Math.random() < 0.005) {
+      const ph = player.segments[0];
+      npc.angle = Math.atan2(ph.z - nHead.z, ph.x - nHead.x);
+    }
+
+    nHead.x += Math.cos(npc.angle) * npcSpeed;
+    nHead.z += Math.sin(npc.angle) * npcSpeed;
+    updateSnakeSegments(npc);
+  }
+
+  if (player && !player.dead) checkOrbCollisions(player);
+  for (const n of npcs) if (!n.dead) checkOrbCollisions(n);
+
+  buildSpatialGrid();
+  checkAsteroidCollisions();
+  checkBodyCollisions();
+  flushWidthUpdates();
+
+  const maxO = Math.floor(MAX_ORBS * lvlData.orbMult);
+  if (frameCount % 15 === 0 && orbs.length < maxO) spawnOrb();
+
+  if (lvlData.asteroid && frameCount % Math.max(2, 7 - currentLevel) === 0) {
+    for (const ast of asteroids) {
+      ast.vx += (Math.random() - 0.5) * 0.002 * currentLevel;
+      ast.vz += (Math.random() - 0.5) * 0.002 * currentLevel;
+    }
+  }
+
+  document.getElementById('scoreVal').textContent = player ? player.score : 0;
+  document.getElementById('killsVal').textContent = totalKills;
+  document.getElementById('levelVal').textContent = currentLevel;
+  drawMinimap();
+  updateLevelBar();
+  checkLevelProgress();
+
+  requestAnimationFrame(gameLoop);
+}
+
+// ── UI wiring ────────────────────────────────────────────────────
+document.getElementById('flashScreen').addEventListener('click', () => showScreen('menuScreen'));
+document.getElementById('playBtn').addEventListener('click', () => startGame(1));
+document.getElementById('setupBtn').addEventListener('click', () => showScreen('setupScreen'));
+document.getElementById('manualBtn').addEventListener('click', () => showScreen('manualScreen'));
+document.getElementById('manualBackBtn').addEventListener('click', () => showScreen('menuScreen'));
+document.getElementById('menuFromDeathBtn').addEventListener('click', () => showScreen('menuScreen'));
+document.getElementById('victoryMenuBtn').addEventListener('click', () => showScreen('menuScreen'));
+document.getElementById('rejoinBtn').addEventListener('click', () => startGame(1));
+document.getElementById('nextLevelBtn').addEventListener('click', () => nextLevel());
+document.getElementById('setupDoneBtn').addEventListener('click', () => showScreen('menuScreen'));
+
+const musicToggle = document.getElementById('musicToggle');
+const sfxToggle = document.getElementById('sfxToggle');
+const vrToggle = document.getElementById('vrToggle');
+const adToggle = document.getElementById('adToggle');
+
+musicToggle.addEventListener('click', () => {
+  settings.music = !settings.music;
+  musicToggle.classList.toggle('on', settings.music);
+  syncMusic();
+});
+sfxToggle.addEventListener('click', () => {
+  settings.sfx = !settings.sfx;
+  sfxToggle.classList.toggle('on', settings.sfx);
+});
+vrToggle.addEventListener('click', () => {
+  settings.vr = !settings.vr;
+  vrToggle.classList.toggle('on', settings.vr);
+  setVRMode(settings.vr);
+});
+adToggle.addEventListener('click', () => {
+  settings.adSteer = !settings.adSteer;
+  adToggle.classList.toggle('on', settings.adSteer);
+});
+
+document.querySelectorAll('.diff-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    settings.difficulty = btn.dataset.diff;
+  });
+});
+
+// ── Input ─────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (settings.adSteer) {
+    if (e.code === 'KeyA') keys.a = true;
+    if (e.code === 'KeyD') keys.d = true;
+  }
+  if (e.code === 'Space') { keys.boost = true; e.preventDefault(); }
+});
+document.addEventListener('keyup', e => {
+  if (settings.adSteer) {
+    if (e.code === 'KeyA') keys.a = false;
+    if (e.code === 'KeyD') keys.d = false;
+  }
+  if (e.code === 'Space') keys.boost = false;
+});
+
+let lastMouseX = null;
+document.addEventListener('mousemove', e => {
+  if (lastMouseX !== null) mouseDX += (e.clientX - lastMouseX) / window.innerWidth * 6;
+  lastMouseX = e.clientX;
+});
+document.addEventListener('mouseleave', () => { lastMouseX = null; });
+
+// Keep music usable after first click/tap
+window.addEventListener('pointerdown', () => { if (settings.music && running) syncMusic(); }, { passive: true });
+window.addEventListener('enter-vr', () => setVRMode(true));
+window.addEventListener('exit-vr', () => setVRMode(settings.vr));
+</script>
+</body>
+</html>
