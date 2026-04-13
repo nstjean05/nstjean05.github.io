@@ -511,9 +511,19 @@
   <a-entity id="obstacleContainer"></a-entity>
 
   <a-entity id="cameraRig" position="0 45 0">
-    <a-camera id="cam" look-controls="enabled:false" wasd-controls="enabled:false" rotation="-90 0 0">
-      <a-cursor id="gazeCursor" fuse="false" raycaster="objects:.gazeTarget" color="#4af" opacity="0.8" position="0 0 -1" geometry="primitive:ring;radiusInner:0.01;radiusOuter:0.015" material="color:#4af;shader:flat"></a-cursor>
-    </a-camera>
+    <a-entity id="cameraPivot" rotation="-90 0 0">
+      <a-camera id="cam" look-controls="enabled:true" wasd-controls="enabled:false">
+        <a-cursor id="gazeCursor"
+          fuse="false"
+          raycaster="objects:.gazeTarget"
+          color="#4af"
+          opacity="0.8"
+          position="0 0 -1"
+          geometry="primitive:ring;radiusInner:0.01;radiusOuter:0.015"
+          material="color:#4af;shader:flat">
+        </a-cursor>
+      </a-camera>
+    </a-entity>
   </a-entity>
 
   <a-entity id="gazeLeft" class="gazeTarget" position="-1 0 -2" visible="false"></a-entity>
@@ -639,13 +649,28 @@ function showScreen(id) {
 
 function setVRMode(enabled) {
   const cam = document.getElementById('cam');
-  if (!cam) return;
+  const pivot = document.getElementById('cameraPivot');
+  if (!cam || !pivot) return;
+
   settings.vr = enabled;
-  cam.setAttribute('look-controls', `enabled:${enabled}`);
+
+  // Always allow headset control
+  cam.setAttribute('look-controls', 'enabled:true');
   cam.setAttribute('wasd-controls', 'enabled:false');
-  if (!enabled) cam.setAttribute('rotation', '-90 0 0');
+
+  // Apply downward tilt ONLY via pivot
+  if (enabled) {
+    pivot.setAttribute('rotation', '-90 0 0');
+  } else {
+    pivot.setAttribute('rotation', '0 0 0');
+  }
+
+  // Ensure camera itself is neutral
+  cam.setAttribute('rotation', '0 0 0');
+
   gazeBoostActive = false;
 }
+
 
 // ── Audio ─────────────────────────────────────────────────────────
 function getAudioCtx() {
