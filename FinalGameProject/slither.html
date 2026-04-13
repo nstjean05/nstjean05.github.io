@@ -67,12 +67,18 @@
     .hud-panel .val { font-size: 22px; font-weight: 700; color: #aef; display: block; }
     #levelBadge { color: #fa0; }
 
-    #boostBar {
+    #boostContainer {
       position: fixed;
       bottom: 24px;
       left: 50%;
       transform: translateX(-50%);
       z-index: 150;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    #boostBar {
       pointer-events: none;
       display: flex;
       flex-direction: column;
@@ -95,6 +101,26 @@
       transition: background 0.2s;
     }
     #boostLabel { color: rgba(150,220,255,0.6); font-size: 10px; letter-spacing: 0.15em; font-family: 'Orbitron', sans-serif; }
+
+    #boostToggleBtn {
+      background: rgba(0, 5, 20, 0.8);
+      border: 1px solid #4af;
+      padding: 8px 16px;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      color: #4af;
+      cursor: pointer;
+      border-radius: 4px;
+      text-transform: uppercase;
+      transition: all 0.2s;
+    }
+    #boostToggleBtn.active {
+      background: rgba(255, 68, 0, 0.3);
+      border-color: #ff4400;
+      color: #fff;
+      box-shadow: 0 0 10px rgba(255, 68, 0, 0.4);
+    }
 
     #minimap {
       position: fixed;
@@ -400,6 +426,7 @@
         <li><kbd>A</kbd> / <kbd>D</kbd> — Turn left / right</li>
         <li><kbd>Mouse</kbd> — Steer (move mouse left/right)</li>
         <li><kbd>Space</kbd> — Boost (costs mass — drops stardust behind you)</li>
+        <li><strong>UI Toggle</strong> — Use the button on screen to lock boost on/off</li>
       </ul>
     </div>
 
@@ -456,9 +483,12 @@
 
 <div id="minimap"><canvas id="mmCanvas" width="130" height="130"></canvas></div>
 
-<div id="boostBar">
-  <div id="boostBarInner"><div id="boostBarFill"></div></div>
-  <div id="boostLabel">BOOST</div>
+<div id="boostContainer">
+  <button id="boostToggleBtn">Boost Off</button>
+  <div id="boostBar">
+    <div id="boostBarInner"><div id="boostBarFill"></div></div>
+    <div id="boostLabel">BOOST</div>
+  </div>
 </div>
 
 <div class="screen hidden" id="deathScreen">
@@ -575,7 +605,7 @@ const DIFF = {
 };
 
 // ── Settings ──────────────────────────────────────────────────────
-const settings = { music: true, sfx: true, difficulty: 'easy', vr: false, adSteer: true };
+const settings = { music: true, sfx: true, difficulty: 'easy', vr: false, adSteer: true, boostToggled: false };
 
 // ── State ─────────────────────────────────────────────────────────
 let running = false;
@@ -1230,7 +1260,6 @@ function updateGazeSteering() {
   cam.object3D.getWorldQuaternion(_gQuat);
   _gDir.set(0, 0, -1).applyQuaternion(_gQuat);
 
-  // Use the camera's forward vector projected on the XZ plane to drive steering
   if (Math.hypot(_gDir.x, _gDir.z) > 0.1) {
     const desired = Math.atan2(_gDir.z, _gDir.x);
     let diff = desired - playerAngle;
@@ -1243,7 +1272,6 @@ function updateGazeSteering() {
     playerAngle += Math.sign(diff) * step;
   }
 
-  // Hide the old floor indicator since we now just follow the center reticle
   if (indicator) indicator.setAttribute('visible', false);
 
   _gEuler.setFromQuaternion(_gQuat, 'YXZ');
@@ -1269,9 +1297,9 @@ function gameLoop() {
     const baseSpeed = Math.max(0.18, 0.28 - player.score * 0.0005);
 
     if (keys.boost && boostFuel > 0) boostFuel = Math.max(0, boostFuel - 0.6);
-    else if (!keys.boost) boostFuel = Math.min(100, boostFuel + 0.3);
+    else if (!keys.boost && !settings.boostToggled && !gazeBoostActive) boostFuel = Math.min(100, boostFuel + 0.3);
 
-    const requestedBoost = keys.boost || gazeBoostActive;
+    const requestedBoost = keys.boost || gazeBoostActive || settings.boostToggled;
     const actuallyBoosting = requestedBoost && boostFuel > 0;
     const speed = actuallyBoosting ? baseSpeed * 2.0 : baseSpeed;
 
@@ -1284,6 +1312,13 @@ function gameLoop() {
       }
     } else {
       player.boostDrainTimer = 0;
+      if (settings.boostToggled && boostFuel <= 0) {
+          // Auto-disable toggle if fuel runs out
+          settings.boostToggled = false;
+          const btn = document.getElementById('boostToggleBtn');
+          btn.classList.remove('active');
+          btn.textContent = "Boost Off";
+      }
     }
 
     document.getElementById('boostBarFill').style.width = boostFuel + '%';
@@ -1367,6 +1402,14 @@ document.getElementById('victoryMenuBtn').addEventListener('click', () => showSc
 document.getElementById('rejoinBtn').addEventListener('click', () => startGame(1));
 document.getElementById('nextLevelBtn').addEventListener('click', () => nextLevel());
 document.getElementById('setupDoneBtn').addEventListener('click', () => showScreen('menuScreen'));
+
+const boostToggleBtn = document.getElementById('boostToggleBtn');
+boostToggleBtn.addEventListener('click', (e) => {
+  settings.boostToggled = !settings.boostToggled;
+  boostToggleBtn.classList.toggle('active', settings.boostToggled);
+  boostToggleBtn.textContent = settings.boostToggled ? "Boost On" : "Boost Off";
+  e.stopPropagation();
+});
 
 const musicToggle = document.getElementById('musicToggle');
 const sfxToggle   = document.getElementById('sfxToggle');
