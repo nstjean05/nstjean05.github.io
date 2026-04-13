@@ -512,22 +512,23 @@
 
   <a-entity id="cameraRig" position="0 45 0">
     <a-entity id="cameraPivot" rotation="-90 0 0">
-      <a-camera id="cam" look-controls="enabled:true" wasd-controls="enabled:false">
-        <a-cursor id="gazeCursor"
-          fuse="false"
-          raycaster="objects:.gazeTarget"
-          color="#4af"
-          opacity="0.8"
-          position="0 0 -1"
-          geometry="primitive:ring;radiusInner:0.01;radiusOuter:0.015"
-          material="color:#4af;shader:flat">
-        </a-cursor>
+      <a-camera id="cam" look-controls="enabled:true" wasd-controls="enabled:false" rotation="0 0 0">
+        <a-cursor id="gazeCursor" fuse="false" raycaster="objects:.gazeTarget" color="#4af" opacity="0.8" position="0 0 -1" geometry="primitive:ring;radiusInner:0.01;radiusOuter:0.015" material="color:#4af;shader:flat"></a-cursor>
       </a-camera>
     </a-entity>
   </a-entity>
 
   <a-entity id="gazeLeft" class="gazeTarget" position="-1 0 -2" visible="false"></a-entity>
   <a-entity id="gazeRight" class="gazeTarget" position="1 0 -2" visible="false"></a-entity>
+
+  <a-ring id="gazeIndicator"
+    rotation="-90 0 0"
+    radius-inner="1.2"
+    radius-outer="1.6"
+    color="#4af"
+    material="shader:flat; opacity:0.9"
+    position="0 0.2 0"
+    visible="false"></a-ring>
 </a-scene>
 
 <audio id="bgMusic" loop>
@@ -598,7 +599,6 @@ let gazeBoostActive = false;
 const pendingWidthFlush = new Set();
 
 // ── Reusable Three.js temp objects (allocated once, never per-frame) ──
-// Must be created after A-Frame / Three.js are loaded — done lazily on first use.
 let _gQuat, _gDir, _gCamPos, _gEuler;
 function ensureGazeTemps() {
   if (_gQuat) return;
@@ -650,27 +650,18 @@ function showScreen(id) {
 function setVRMode(enabled) {
   const cam = document.getElementById('cam');
   const pivot = document.getElementById('cameraPivot');
+  const indicator = document.getElementById('gazeIndicator');
   if (!cam || !pivot) return;
 
   settings.vr = enabled;
-
-  // Always allow headset control
   cam.setAttribute('look-controls', 'enabled:true');
   cam.setAttribute('wasd-controls', 'enabled:false');
-
-  // Apply downward tilt ONLY via pivot
-  if (enabled) {
-    pivot.setAttribute('rotation', '-90 0 0');
-  } else {
-    pivot.setAttribute('rotation', '0 0 0');
-  }
-
-  // Ensure camera itself is neutral
   cam.setAttribute('rotation', '0 0 0');
+  pivot.setAttribute('rotation', enabled ? '-90 0 0' : '0 0 0');
 
+  if (indicator) indicator.setAttribute('visible', false);
   gazeBoostActive = false;
 }
-
 
 // ── Audio ─────────────────────────────────────────────────────────
 function getAudioCtx() {
@@ -1220,67 +1211,56 @@ function drawMinimap() {
 
 // ═══════════════════════════════════════════════════════════════════
 //  VR GAZE STEERING
-//
-//  Strategy: cast a ray from the camera (world pos + world forward
-//  direction) onto the ground plane (y = 0).  The intersection point
-//  is where the gaze dot is "pointing" on the arena floor.  We steer
-//  the snake toward that point each frame.
-//
-//  This works correctly even though the camera looks mostly downward
-//  (rotation -90 on X) because we project through the actual screen
-//  centre, so any head rotation — left/right/slight tilt — moves the
-//  ground intersection point and therefore changes the heading.
 // ═══════════════════════════════════════════════════════════════════
 function updateGazeSteering() {
   gazeBoostActive = false;
-  if (!settings.vr || !player || player.dead) return;
+  if (!settings.vr || !player || player.dead) {
+    const indicator = document.getElementById('gazeIndicator');
+    if (indicator) indicator.setAttribute('visible', false);
+    return;
+  }
+
   const cam = document.getElementById('cam');
+  const indicator = document.getElementById('gazeIndicator');
   if (!cam || !cam.object3D) return;
 
   ensureGazeTemps();
 
-  // 1. Camera world position
   cam.object3D.getWorldPosition(_gCamPos);
-
-  // 2. Camera world orientation → forward direction (0,0,-1) in world space
   cam.object3D.getWorldQuaternion(_gQuat);
   _gDir.set(0, 0, -1).applyQuaternion(_gQuat);
 
-  // 3. Ray–ground-plane intersection.
-  //    Ray: P(t) = camPos + t * dir
-  //    Ground plane: y = 0  →  t = -camPos.y / dir.y
-  //    We only proceed when dir.y is meaningfully negative (ray hits ground).
-  if (_gDir.y < -0.01) {
+  if (_gDir.y < -0.05) {
     const t = -_gCamPos.y / _gDir.y;
-    if (t > 0 && t < 800) {
-      const gx = _gCamPos.x + t * _gDir.x;
-      const gz = _gCamPos.z + t * _gDir.z;
+    if (t > 0 && t < 1000) {
+      const gx = _gCamPos.x + _gDir.x * t;
+      const gz = _gCamPos.z + _gDir.z * t;
 
-      // 4. Steer toward the gaze ground point.
-      //    Ignore when the point is almost directly below the camera
-      //    (very small t) to avoid jitter when looking straight down.
+      if (indicator) {
+        indicator.object3D.position.set(gx, 0.2, gz);
+        indicator.setAttribute('visible', true);
+      }
+
       const head = player.segments[0];
-      const dx = gx - head.x, dz = gz - head.z;
+      const dx = gx - head.x;
+      const dz = gz - head.z;
       const dist = Math.sqrt(dx * dx + dz * dz);
 
-      if (dist > 5) {
+      if (dist > 2) {
         const desired = Math.atan2(dx, dz);
-        let gd = desired - playerAngle;
-        while (gd >  Math.PI) gd -= Math.PI * 2;
-        while (gd < -Math.PI) gd += Math.PI * 2;
+        let diff = desired - playerAngle;
+        while (diff > Math.PI) diff -= Math.PI * 2;
+        while (diff < -Math.PI) diff += Math.PI * 2;
 
-        // Proportional steering: turn at full speed until aligned,
-        // clamped to one frame's worth of turn so we never overshoot.
         const ts = getTurnSpeed(player.score);
-        playerAngle += Math.sign(gd) * Math.min(Math.abs(gd), ts);
+        const step = Math.min(Math.abs(diff) * 0.35, ts * 1.25);
+        playerAngle += Math.sign(diff) * step;
       }
     }
+  } else {
+    if (indicator) indicator.setAttribute('visible', false);
   }
 
-  // 5. Boost via chin-tilt.
-  //    Default camera pitch is ~-PI/2 (looking straight down).
-  //    Nodding forward goes more negative; -2.0 rad ≈ -115° is a
-  //    noticeable but comfortable nod beyond vertical.
   _gEuler.setFromQuaternion(_gQuat, 'YXZ');
   gazeBoostActive = _gEuler.x < -2.0;
 }
@@ -1298,7 +1278,6 @@ function gameLoop() {
     }
     if (mouseDX !== 0) { playerAngle += mouseDX * ts * 0.8; mouseDX = 0; }
 
-    // Gaze steering runs every frame in VR mode
     updateGazeSteering();
 
     const pHead = player.segments[0];
