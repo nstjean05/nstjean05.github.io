@@ -406,7 +406,7 @@
     <div class="section">
       <h2>Controls — Mobile VR (Gaze)</h2>
       <ul>
-        <li><strong>Look left / right</strong> — The gaze dot steers your serpent toward wherever you look on the arena floor</li>
+        <li><strong>Look around</strong> — The serpent will follow the gaze dot in the middle of your screen</li>
         <li><strong>Chin tilt down</strong> — Nod your head forward to activate boost</li>
         <li>No hand controllers required — fully gaze-driven</li>
       </ul>
@@ -1214,6 +1214,7 @@ function drawMinimap() {
 // ═══════════════════════════════════════════════════════════════════
 function updateGazeSteering() {
   gazeBoostActive = false;
+  
   if (!settings.vr || !player || player.dead) {
     const indicator = document.getElementById('gazeIndicator');
     if (indicator) indicator.setAttribute('visible', false);
@@ -1226,40 +1227,24 @@ function updateGazeSteering() {
 
   ensureGazeTemps();
 
-  cam.object3D.getWorldPosition(_gCamPos);
   cam.object3D.getWorldQuaternion(_gQuat);
   _gDir.set(0, 0, -1).applyQuaternion(_gQuat);
 
-  if (_gDir.y < -0.05) {
-    const t = -_gCamPos.y / _gDir.y;
-    if (t > 0 && t < 1000) {
-      const gx = _gCamPos.x + _gDir.x * t;
-      const gz = _gCamPos.z + _gDir.z * t;
+  // Use the camera's forward vector projected on the XZ plane to drive steering
+  if (Math.hypot(_gDir.x, _gDir.z) > 0.1) {
+    const desired = Math.atan2(_gDir.z, _gDir.x);
+    let diff = desired - playerAngle;
+    
+    while (diff > Math.PI) diff -= Math.PI * 2;
+    while (diff < -Math.PI) diff += Math.PI * 2;
 
-      if (indicator) {
-        indicator.object3D.position.set(gx, 0.2, gz);
-        indicator.setAttribute('visible', true);
-      }
-
-      const head = player.segments[0];
-      const dx = gx - head.x;
-      const dz = gz - head.z;
-      const dist = Math.sqrt(dx * dx + dz * dz);
-
-      if (dist > 2) {
-        const desired = Math.atan2(dx, dz);
-        let diff = desired - playerAngle;
-        while (diff > Math.PI) diff -= Math.PI * 2;
-        while (diff < -Math.PI) diff += Math.PI * 2;
-
-        const ts = getTurnSpeed(player.score);
-        const step = Math.min(Math.abs(diff) * 0.35, ts * 1.25);
-        playerAngle += Math.sign(diff) * step;
-      }
-    }
-  } else {
-    if (indicator) indicator.setAttribute('visible', false);
+    const ts = getTurnSpeed(player.score);
+    const step = Math.min(Math.abs(diff) * 0.35, ts * 1.25);
+    playerAngle += Math.sign(diff) * step;
   }
+
+  // Hide the old floor indicator since we now just follow the center reticle
+  if (indicator) indicator.setAttribute('visible', false);
 
   _gEuler.setFromQuaternion(_gQuat, 'YXZ');
   gazeBoostActive = _gEuler.x < -2.0;
