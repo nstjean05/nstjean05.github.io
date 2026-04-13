@@ -23,7 +23,6 @@
       pointer-events: none;
     }
 
-    /* Top progress bar */
     #levelBarContainer {
       position: fixed;
       top: 0;
@@ -41,7 +40,6 @@
       transition: width 0.15s linear, background 0.2s linear;
     }
 
-    /* HUD */
     #hud {
       position: fixed;
       top: 18px;
@@ -98,7 +96,6 @@
     }
     #boostLabel { color: rgba(150,220,255,0.6); font-size: 10px; letter-spacing: 0.15em; font-family: 'Orbitron', sans-serif; }
 
-    /* Minimap */
     #minimap {
       position: fixed;
       bottom: 20px;
@@ -112,7 +109,6 @@
       overflow: hidden;
     }
 
-    /* Screens */
     .screen {
       position: fixed;
       inset: 0;
@@ -410,8 +406,8 @@
     <div class="section">
       <h2>Controls — Mobile VR (Gaze)</h2>
       <ul>
-        <li><strong>Gaze left / right</strong> — Look left or right to steer your serpent in that direction</li>
-        <li><strong>Gaze down</strong> — Tilt your head down to activate boost</li>
+        <li><strong>Look left / right</strong> — The gaze dot steers your serpent toward wherever you look on the arena floor</li>
+        <li><strong>Chin tilt down</strong> — Nod your head forward to activate boost</li>
         <li>No hand controllers required — fully gaze-driven</li>
       </ul>
     </div>
@@ -530,18 +526,15 @@
 
 <script>
 // ═══════════════════════════════════════════════════════════════════
-//  COSMIS — Full fixed build
+//  COSMIS — Cosmic Serpent Odyssey
+//  CMPT 461 · Noah St-Jean · Trinity Western University · 2026
 // ═══════════════════════════════════════════════════════════════════
 
-// ── Constants ─────────────────────────────────────────────────────
 const BORDER_RADIUS = 220;
 const BASE_RADIUS = 0.5;
-const MAX_NPCS_L1 = 12;
-const MAX_NPCS_L2 = 16;
 const INITIAL_ORBS = 900;
 const MAX_ORBS = 1200;
 const ASTEROID_COUNT = 40;
-const LEVEL2_THRESHOLD = 60;
 const MAX_LEVEL = 6;
 
 const BASE_TURN_SPEED = 0.08;
@@ -555,30 +548,23 @@ const PLANET_TEXTURES = ['#texEarth', '#texMars', '#texJupiter', '#texMoon', '#t
 const NPC_COLORS = ['#ff6644','#4488ff','#ffdd22','#ff44cc','#ff9922','#22ddff','#ff7788','#88ff44'];
 const ORB_COLORS = ['#88ccff','#ffdd88','#ff88cc','#88ffcc','#ccaaff','#ffffff'];
 
-// Level tuning. Higher levels are harder.
 const LEVELS = [
-  { target: 60,  npcCount: 12, npcSpeed: 0.17, orbMult: 1.25, levelName: 'Nebula Cloud',  asteroid: false, asteroidCount: 0,  asteroidSpeed: 0 },
+  { target: 60,  npcCount: 12, npcSpeed: 0.17, orbMult: 1.25, levelName: 'Nebula Cloud',   asteroid: false, asteroidCount: 0,  asteroidSpeed: 0 },
   { target: 120, npcCount: 14, npcSpeed: 0.19, orbMult: 1.10, levelName: 'Asteroid Drift', asteroid: true,  asteroidCount: 8,  asteroidSpeed: 0.012 },
-  { target: 200, npcCount: 16, npcSpeed: 0.21, orbMult: 1.00, levelName: 'Ion Belt',       asteroid: true,  asteroidCount: 14, asteroidSpeed: 0.016 },
+  { target: 200, npcCount: 16, npcSpeed: 0.21, orbMult: 1.00, levelName: 'Ion Belt',        asteroid: true,  asteroidCount: 14, asteroidSpeed: 0.016 },
   { target: 320, npcCount: 20, npcSpeed: 0.23, orbMult: 0.90, levelName: 'Rift Swarm',      asteroid: true,  asteroidCount: 20, asteroidSpeed: 0.020 },
   { target: 500, npcCount: 24, npcSpeed: 0.26, orbMult: 0.80, levelName: 'Nova Run',        asteroid: true,  asteroidCount: 28, asteroidSpeed: 0.025 },
   { target: 760, npcCount: 28, npcSpeed: 0.29, orbMult: 0.70, levelName: 'Void Crown',      asteroid: true,  asteroidCount: 36, asteroidSpeed: 0.031 },
 ];
 
 const DIFF = {
-  easy:   { npcSpeedMult: 0.90, npcCountBonus: 0, orbMultBonus: 0.15 },
-  normal: { npcSpeedMult: 1.00, npcCountBonus: 0, orbMultBonus: 0.00 },
+  easy:   { npcSpeedMult: 0.90, npcCountBonus: 0, orbMultBonus:  0.15 },
+  normal: { npcSpeedMult: 1.00, npcCountBonus: 0, orbMultBonus:  0.00 },
   hard:   { npcSpeedMult: 1.12, npcCountBonus: 2, orbMultBonus: -0.20 },
 };
 
 // ── Settings ──────────────────────────────────────────────────────
-const settings = {
-  music: true,
-  sfx: true,
-  difficulty: 'easy',
-  vr: false,
-  adSteer: true,
-};
+const settings = { music: true, sfx: true, difficulty: 'easy', vr: false, adSteer: true };
 
 // ── State ─────────────────────────────────────────────────────────
 let running = false;
@@ -593,7 +579,7 @@ let frameCount = 0;
 let totalKills = 0;
 let mouseDX = 0;
 let boostFuel = 100;
-let npcIndex = 0;
+let npcSpawnCounter = 0;
 let spatialGrid = {};
 let audioCtx = null;
 let bgOsc = null;
@@ -601,12 +587,22 @@ let bgGain = null;
 let gazeBoostActive = false;
 const pendingWidthFlush = new Set();
 
+// ── Reusable Three.js temp objects (allocated once, never per-frame) ──
+// Must be created after A-Frame / Three.js are loaded — done lazily on first use.
+let _gQuat, _gDir, _gCamPos, _gEuler;
+function ensureGazeTemps() {
+  if (_gQuat) return;
+  _gQuat   = new THREE.Quaternion();
+  _gDir    = new THREE.Vector3();
+  _gCamPos = new THREE.Vector3();
+  _gEuler  = new THREE.Euler();
+}
+
 // ── Stars background ──────────────────────────────────────────────
 (function initStars() {
   const canvas = document.getElementById('starsCanvas');
   const ctx = canvas.getContext('2d');
   let stars = [];
-
   function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
@@ -618,7 +614,6 @@ const pendingWidthFlush = new Set();
       da: (Math.random() - 0.5) * 0.008,
     }));
   }
-
   function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     for (const s of stars) {
@@ -631,7 +626,6 @@ const pendingWidthFlush = new Set();
     }
     requestAnimationFrame(draw);
   }
-
   window.addEventListener('resize', resize);
   resize();
   draw();
@@ -646,11 +640,10 @@ function showScreen(id) {
 function setVRMode(enabled) {
   const cam = document.getElementById('cam');
   if (!cam) return;
-
   settings.vr = enabled;
   cam.setAttribute('look-controls', `enabled:${enabled}`);
   cam.setAttribute('wasd-controls', 'enabled:false');
-  cam.setAttribute('rotation', '-90 0 0');
+  if (!enabled) cam.setAttribute('rotation', '-90 0 0');
   gazeBoostActive = false;
 }
 
@@ -659,14 +652,12 @@ function getAudioCtx() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   return audioCtx;
 }
-
 function syncMusic() {
   if (!running) return;
   if (!settings.music) {
     if (bgGain) bgGain.gain.setTargetAtTime(0.0001, getAudioCtx().currentTime, 0.2);
     return;
   }
-
   const ctx = getAudioCtx();
   if (!bgOsc) {
     bgOsc = ctx.createOscillator();
@@ -680,16 +671,13 @@ function syncMusic() {
   }
   bgGain.gain.setTargetAtTime(0.03, ctx.currentTime, 0.3);
 }
-
 function playSFX(type) {
   if (!settings.sfx) return;
   try {
     const ctx = getAudioCtx();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
+    osc.connect(gain); gain.connect(ctx.destination);
     if (type === 'eat') {
       osc.type = 'sine';
       osc.frequency.setValueAtTime(520, ctx.currentTime);
@@ -718,14 +706,10 @@ function playSFX(type) {
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
       osc.start(); osc.stop(ctx.currentTime + 0.6);
     } else if (type === 'levelup') {
-      const freqs = [523, 659, 784, 1047];
-      freqs.forEach((f, i) => {
-        const o2 = ctx.createOscillator();
-        const g2 = ctx.createGain();
-        o2.connect(g2);
-        g2.connect(ctx.destination);
-        o2.type = 'sine';
-        o2.frequency.value = f;
+      [523, 659, 784, 1047].forEach((f, i) => {
+        const o2 = ctx.createOscillator(), g2 = ctx.createGain();
+        o2.connect(g2); g2.connect(ctx.destination);
+        o2.type = 'sine'; o2.frequency.value = f;
         const t = ctx.currentTime + i * 0.12;
         g2.gain.setValueAtTime(0.2, t);
         g2.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
@@ -746,9 +730,7 @@ function getCircularPos(radius) {
   const theta = Math.random() * Math.PI * 2;
   return { x: Math.cos(theta) * r, z: Math.sin(theta) * r };
 }
-function getLevelData() {
-  return LEVELS[Math.min(currentLevel - 1, LEVELS.length - 1)];
-}
+function getLevelData() { return LEVELS[Math.min(currentLevel - 1, LEVELS.length - 1)]; }
 
 function scheduleWidthUpdate(snake) {
   const newR = calcRadius(snake.score);
@@ -756,7 +738,6 @@ function scheduleWidthUpdate(snake) {
   snake.currentRadius = newR;
   pendingWidthFlush.add(snake);
 }
-
 function flushWidthUpdates() {
   for (const snake of pendingWidthFlush) {
     const r = snake.currentRadius;
@@ -795,12 +776,11 @@ function buildSpatialGrid() {
 function nearbySegments(x, z) {
   const cx = Math.floor(x / GRID_CELL), cz = Math.floor(z / GRID_CELL);
   const results = [];
-  for (let dx = -1; dx <= 1; dx++) {
+  for (let dx = -1; dx <= 1; dx++)
     for (let dz = -1; dz <= 1; dz++) {
       const bucket = spatialGrid[`${cx + dx}_${cz + dz}`];
       if (bucket) for (const e of bucket) results.push(e);
     }
-  }
   return results;
 }
 
@@ -808,7 +788,6 @@ function nearbySegments(x, z) {
 function initArena(level) {
   const floor = document.getElementById('floorContainer');
   floor.innerHTML = '';
-
   const disc = document.createElement('a-circle');
   disc.setAttribute('rotation', '-90 0 0');
   disc.setAttribute('radius', BORDER_RADIUS);
@@ -853,10 +832,7 @@ function initArena(level) {
       ast.setAttribute('rotation', `${Math.random()*360} ${Math.random()*360} ${Math.random()*360}`);
       obs.appendChild(ast);
       asteroids.push({
-        el: ast,
-        x: pos.x,
-        z: pos.z,
-        r: sz,
+        el: ast, x: pos.x, z: pos.z, r: sz,
         vx: (Math.random() - 0.5) * lvlData.asteroidSpeed,
         vz: (Math.random() - 0.5) * lvlData.asteroidSpeed,
         spinX: (Math.random() - 0.5) * 0.5,
@@ -872,43 +848,29 @@ function pickTexture(isPlayer, index) {
   if (isPlayer) return PLANET_TEXTURES[0];
   return PLANET_TEXTURES[(index % (PLANET_TEXTURES.length - 1)) + 1];
 }
-
 function createSegmentEl(texture, color, radius) {
   const s = document.createElement('a-sphere');
   s.setAttribute('radius', radius);
   s.setAttribute('material', `src:${texture};emissive:${color};emissiveIntensity:0.25;roughness:0.7;metalness:0.1`);
   return s;
 }
-
-let npcSpawnCounter = 0;
 function createSnake(isPlayer, startX, startZ, tex) {
   const container = document.getElementById('snakeContainer');
   const color = isPlayer ? '#44bbff' : NPC_COLORS[npcSpawnCounter % NPC_COLORS.length];
   const texture = tex || pickTexture(isPlayer, npcSpawnCounter);
   npcSpawnCounter++;
-
   const snake = {
-    segments: [],
-    score: 8,
-    color,
-    texture,
+    segments: [], score: 8, color, texture,
     angle: Math.random() * Math.PI * 2,
-    isPlayer,
-    dead: false,
+    isPlayer, dead: false,
     currentRadius: BASE_RADIUS,
     lastWidthScore: 0,
     boostDrainTimer: 0,
   };
-
   for (let i = 0; i < 8; i++) {
     const s = createSegmentEl(texture, color, BASE_RADIUS);
     container.appendChild(s);
-    const seg = {
-      el: s,
-      x: startX - i * BASE_RADIUS,
-      z: startZ,
-      renderedRadius: BASE_RADIUS,
-    };
+    const seg = { el: s, x: startX - i * BASE_RADIUS, z: startZ, renderedRadius: BASE_RADIUS };
     if (s.object3D) s.object3D.position.set(seg.x, BASE_RADIUS, seg.z);
     snake.segments.push(seg);
   }
@@ -920,15 +882,13 @@ function spawnPlayer() {
   const pos = getCircularPos(40);
   player = createSnake(true, pos.x, pos.z, PLANET_TEXTURES[0]);
   playerAngle = Math.random() * Math.PI * 2;
-  document.getElementById('deathScreen').classList.remove('show');
   const head = player.segments[0];
   document.getElementById('cameraRig').object3D.position.set(head.x, 45, head.z);
   document.getElementById('playerLight').object3D.position.set(head.x, 6, head.z);
 }
 function spawnNPC() {
   const pos = getCircularPos(BORDER_RADIUS * 0.75);
-  const npc = createSnake(false, pos.x, pos.z);
-  npcs.push(npc);
+  npcs.push(createSnake(false, pos.x, pos.z));
 }
 function spawnOrb(x, z, isLoot = false, lootColor = '#88ccff') {
   if (x === undefined) {
@@ -944,23 +904,16 @@ function spawnOrb(x, z, isLoot = false, lootColor = '#88ccff') {
   document.getElementById('orbContainer').appendChild(o);
   orbs.push({ el: o, x, z, value: isLoot ? 3 : 1 });
 }
-
 function clearWorld() {
   ['orbContainer', 'snakeContainer', 'obstacleContainer'].forEach(id => {
     const c = document.getElementById(id);
     while (c.firstChild) c.removeChild(c.firstChild);
   });
-  orbs = [];
-  npcs = [];
-  asteroids = [];
-  frameCount = 0;
-  totalKills = 0;
-  npcSpawnCounter = 0;
-  boostFuel = 100;
-  spatialGrid = {};
+  orbs = []; npcs = []; asteroids = [];
+  frameCount = 0; totalKills = 0; npcSpawnCounter = 0;
+  boostFuel = 100; spatialGrid = {};
   pendingWidthFlush.clear();
 }
-
 function startGame(level) {
   clearWorld();
   currentLevel = level;
@@ -969,14 +922,9 @@ function startGame(level) {
 
   const lvlData = getLevelData();
   const diff = DIFF[settings.difficulty];
-  const npcCount = Math.max(1, Math.floor(lvlData.npcCount * diff.npcCountBonus + lvlData.npcCount));
-  const adjustedSpeed = lvlData.npcSpeed * diff.npcSpeedMult;
-  const orbCount = Math.floor(INITIAL_ORBS * (lvlData.orbMult + diff.orbMultBonus));
-
-  // store per-level npc speed in a place the loop can read without extra branching
-  startGame.npcSpeed = adjustedSpeed;
-
+  const npcCount = Math.max(1, Math.floor(lvlData.npcCount + diff.npcCountBonus));
   for (let i = 0; i < npcCount; i++) spawnNPC();
+  const orbCount = Math.floor(INITIAL_ORBS * (lvlData.orbMult + diff.orbMultBonus));
   for (let i = 0; i < orbCount; i++) spawnOrb();
 
   document.getElementById('levelVal').textContent = currentLevel;
@@ -1000,15 +948,13 @@ function updateSnakeSegments(snake) {
   const segs = snake.segments;
   const n = segs.length;
   const y = snake.currentRadius;
-
   for (let i = n - 1; i > 0; i--) {
     const seg = segs[i], prev = segs[i - 1];
     const dx = prev.x - seg.x, dz = prev.z - seg.z;
     const d = Math.sqrt(dx * dx + dz * dz);
     if (d > segDist) {
       const m = (d - segDist) / d;
-      seg.x += dx * m;
-      seg.z += dz * m;
+      seg.x += dx * m; seg.z += dz * m;
     }
     if (seg.el.object3D) seg.el.object3D.position.set(seg.x, y, seg.z);
   }
@@ -1021,28 +967,24 @@ function growSnake(snake, amount = 1) {
   const container = document.getElementById('snakeContainer');
   const last = snake.segments[snake.segments.length - 1];
   const r = snake.currentRadius;
-
   for (let i = 0; i < amount; i++) {
     const s = createSegmentEl(snake.texture, snake.color, r);
     container.appendChild(s);
     snake.segments.push({ el: s, x: last.x, z: last.z, renderedRadius: r });
     snake.score++;
   }
-
   const threshold = snake.lastWidthScore + WIDTH_UPDATE_INTERVAL;
   if (snake.score >= threshold) {
     snake.lastWidthScore = snake.score;
     scheduleWidthUpdate(snake);
   }
 }
-
 function shrinkSnake(snake) {
   if (snake.segments.length <= 6) return;
   const tail = snake.segments.pop();
   const ox = tail.x, oz = tail.z;
   if (tail.el && tail.el.parentNode) tail.el.parentNode.removeChild(tail.el);
   snake.score = Math.max(1, snake.score - 1);
-
   if (orbs.length < MAX_ORBS) {
     const o = document.createElement('a-sphere');
     o.setAttribute('radius', 0.18);
@@ -1051,7 +993,6 @@ function shrinkSnake(snake) {
     document.getElementById('orbContainer').appendChild(o);
     orbs.push({ el: o, x: ox, z: oz, value: 1 });
   }
-
   const threshold = snake.lastWidthScore - WIDTH_UPDATE_INTERVAL;
   if (snake.score <= threshold) {
     snake.lastWidthScore = snake.score;
@@ -1059,13 +1000,12 @@ function shrinkSnake(snake) {
   }
 }
 
-// ── Collisions ────────────────────────────────────────────────────
+// ── Orb collisions ────────────────────────────────────────────────
 function checkOrbCollisions(snake) {
   const head = snake.segments[0];
   const grabRange = snake.currentRadius + 0.8;
   const grabRange2 = grabRange * grabRange;
   let ate = false;
-
   for (let i = orbs.length - 1; i >= 0; i--) {
     const o = orbs[i];
     const dx = head.x - o.x, dz = head.z - o.z;
@@ -1083,7 +1023,6 @@ function checkOrbCollisions(snake) {
 function ensureOrbCapacity(extraNeeded = 1) {
   const room = MAX_ORBS - orbs.length;
   if (room >= extraNeeded) return;
-
   const toRemove = Math.min(orbs.length, extraNeeded - room);
   for (let i = 0; i < toRemove; i++) {
     const old = orbs.shift();
@@ -1094,15 +1033,11 @@ function ensureOrbCapacity(extraNeeded = 1) {
 function dropLootFromSnake(snake) {
   const segs = snake.segments;
   if (!segs.length) return;
-
-  // Ensure there is room so death loot always appears.
   const lootCount = Math.min(Math.floor(segs.length * 1.5), 80);
   ensureOrbCapacity(lootCount);
-
   const step = Math.max(1, Math.floor(segs.length / lootCount));
   for (let i = 0; i < segs.length; i++) {
     if (i % step !== 0) continue;
-
     let ox = segs[i].x, oz = segs[i].z;
     if (segs[i].el && segs[i].el.object3D) {
       ox = segs[i].el.object3D.position.x;
@@ -1115,17 +1050,12 @@ function dropLootFromSnake(snake) {
 function killSnake(snake) {
   if (snake.dead) return;
   snake.dead = true;
-
-  if (snake.segments.length) {
-    dropLootFromSnake(snake);
-  }
-
-  const segs = snake.segments;
-  for (let i = 0; i < segs.length; i++) {
-    if (segs[i].el && segs[i].el.parentNode) segs[i].el.parentNode.removeChild(segs[i].el);
+  if (snake.segments.length) dropLootFromSnake(snake);
+  for (let i = 0; i < snake.segments.length; i++) {
+    if (snake.segments[i].el && snake.segments[i].el.parentNode)
+      snake.segments[i].el.parentNode.removeChild(snake.segments[i].el);
   }
   snake.segments = [];
-
   if (snake.isPlayer) {
     playSFX('die');
     running = false;
@@ -1143,60 +1073,44 @@ function severSnakeFromIndex(snake, hitIndex) {
   if (!snake || snake.dead || hitIndex <= 0) return;
   const removed = snake.segments.splice(hitIndex);
   if (!removed.length) return;
-
   for (const seg of removed) {
     if (seg.el && seg.el.parentNode) seg.el.parentNode.removeChild(seg.el);
   }
-
   snake.score = Math.max(1, snake.score - removed.length);
-
   const lootEvery = Math.max(1, Math.floor(removed.length / 4));
   for (let i = 0; i < removed.length; i += lootEvery) {
     const seg = removed[i];
-    if (seg && orbs.length < MAX_ORBS) {
+    if (seg && orbs.length < MAX_ORBS)
       spawnOrb(seg.x + (Math.random() - 0.5), seg.z + (Math.random() - 0.5), true, snake.color);
-    }
   }
-
   snake.lastWidthScore = snake.score;
   scheduleWidthUpdate(snake);
 }
 
 function checkAsteroidCollisions() {
   if (!asteroids.length) return;
-
   for (const ast of asteroids) {
-    ast.x += ast.vx;
-    ast.z += ast.vz;
-
+    ast.x += ast.vx; ast.z += ast.vz;
     const dist = Math.hypot(ast.x, ast.z);
     if (dist > BORDER_RADIUS - ast.r - 5) {
-      const nx = ast.x / dist;
-      const nz = ast.z / dist;
+      const nx = ast.x / dist, nz = ast.z / dist;
       const dot = ast.vx * nx + ast.vz * nz;
-      ast.vx -= 2 * dot * nx;
-      ast.vz -= 2 * dot * nz;
+      ast.vx -= 2 * dot * nx; ast.vz -= 2 * dot * nz;
       ast.x = nx * (BORDER_RADIUS - ast.r - 6);
       ast.z = nz * (BORDER_RADIUS - ast.r - 6);
     }
-
     if (ast.el && ast.el.object3D) {
       ast.el.object3D.position.set(ast.x, 0, ast.z);
       ast.el.object3D.rotation.x += ast.spinX;
       ast.el.object3D.rotation.y += ast.spinY;
       ast.el.object3D.rotation.z += ast.spinZ;
     }
-
     const nearby = nearbySegments(ast.x, ast.z);
     for (const { seg, snake, index } of nearby) {
-      if (!snake || snake.dead) continue;
-      if (index <= 0) continue;
+      if (!snake || snake.dead || index <= 0) continue;
       const hitR = ast.r + snake.currentRadius;
       const dx = ast.x - seg.x, dz = ast.z - seg.z;
-      if (dx * dx + dz * dz < hitR * hitR) {
-        severSnakeFromIndex(snake, index);
-        break;
-      }
+      if (dx * dx + dz * dz < hitR * hitR) { severSnakeFromIndex(snake, index); break; }
     }
   }
 }
@@ -1205,26 +1119,18 @@ function checkBodyCollisions() {
   const allSnakes = [];
   if (player && !player.dead) allSnakes.push(player);
   for (const n of npcs) if (!n.dead) allSnakes.push(n);
-
   for (const attacker of allSnakes) {
     if (attacker.dead) continue;
     const head = attacker.segments[0];
     const aR = attacker.currentRadius;
     const nearby = nearbySegments(head.x, head.z);
-
     for (const { seg, snake: victim } of nearby) {
       if (victim === attacker || victim.dead) continue;
       const threshold = (aR + victim.currentRadius) * HITBOX_MULT;
       const dx = head.x - seg.x, dz = head.z - seg.z;
       if (dx * dx + dz * dz < threshold * threshold) {
-        if (attacker.isPlayer) {
-          killSnake(player);
-          return;
-        } else {
-          killSnake(attacker);
-          if (victim.isPlayer) { totalKills++; playSFX('kill'); }
-          break;
-        }
+        if (attacker.isPlayer) { killSnake(player); return; }
+        else { killSnake(attacker); if (victim.isPlayer) { totalKills++; playSFX('kill'); } break; }
       }
     }
   }
@@ -1247,7 +1153,6 @@ function checkLevelProgress() {
     playSFX('levelup');
   }
 }
-
 function updateLevelBar() {
   if (!player || player.dead) return;
   const lvl = getLevelData();
@@ -1255,16 +1160,13 @@ function updateLevelBar() {
   const bar = document.getElementById('levelBar');
   if (bar) {
     bar.style.width = (progress * 100) + '%';
-    if (progress > 0.8) bar.style.background = 'linear-gradient(90deg,#ffcc00,#ff4444)';
-    else bar.style.background = 'linear-gradient(90deg,#4af,#0ff)';
+    bar.style.background = progress > 0.8
+      ? 'linear-gradient(90deg,#ffcc00,#ff4444)'
+      : 'linear-gradient(90deg,#4af,#0ff)';
   }
 }
-
 function nextLevel() {
-  if (currentLevel < MAX_LEVEL) {
-    currentLevel++;
-    startGame(currentLevel);
-  }
+  if (currentLevel < MAX_LEVEL) { currentLevel++; startGame(currentLevel); }
 }
 
 // ── Minimap ───────────────────────────────────────────────────────
@@ -1272,65 +1174,93 @@ function drawMinimap() {
   const ctx = document.getElementById('mmCanvas').getContext('2d');
   ctx.clearRect(0, 0, 130, 130);
   const scale = 62 / BORDER_RADIUS;
-
-  ctx.strokeStyle = 'rgba(100,180,255,0.5)';
-  ctx.lineWidth = 1.5;
-  ctx.beginPath();
-  ctx.arc(65, 65, 62, 0, Math.PI * 2);
-  ctx.stroke();
-
+  ctx.strokeStyle = 'rgba(100,180,255,0.5)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(65, 65, 62, 0, Math.PI * 2); ctx.stroke();
   for (const o of orbs) {
     ctx.fillStyle = 'rgba(150,220,255,0.3)';
-    ctx.beginPath();
-    ctx.arc(65 + o.x * scale, 65 + o.z * scale, 1, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.beginPath(); ctx.arc(65 + o.x * scale, 65 + o.z * scale, 1, 0, Math.PI * 2); ctx.fill();
   }
-
   for (const n of npcs) {
     if (!n.dead && n.segments.length) {
       ctx.fillStyle = n.color;
-      ctx.beginPath();
-      ctx.arc(65 + n.segments[0].x * scale, 65 + n.segments[0].z * scale, 2.5, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(65 + n.segments[0].x * scale, 65 + n.segments[0].z * scale, 2.5, 0, Math.PI * 2); ctx.fill();
     }
   }
   if (player && !player.dead && player.segments.length) {
-    ctx.fillStyle = '#fff';
-    ctx.shadowColor = '#4af';
-    ctx.shadowBlur = 6;
-    ctx.beginPath();
-    ctx.arc(65 + player.segments[0].x * scale, 65 + player.segments[0].z * scale, 4, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.shadowColor = '#4af'; ctx.shadowBlur = 6;
+    ctx.beginPath(); ctx.arc(65 + player.segments[0].x * scale, 65 + player.segments[0].z * scale, 4, 0, Math.PI * 2); ctx.fill();
     ctx.shadowBlur = 0;
   }
 }
 
-// ── VR / gaze steering ────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════
+//  VR GAZE STEERING
+//
+//  Strategy: cast a ray from the camera (world pos + world forward
+//  direction) onto the ground plane (y = 0).  The intersection point
+//  is where the gaze dot is "pointing" on the arena floor.  We steer
+//  the snake toward that point each frame.
+//
+//  This works correctly even though the camera looks mostly downward
+//  (rotation -90 on X) because we project through the actual screen
+//  centre, so any head rotation — left/right/slight tilt — moves the
+//  ground intersection point and therefore changes the heading.
+// ═══════════════════════════════════════════════════════════════════
 function updateGazeSteering() {
   gazeBoostActive = false;
-  if (!settings.vr) return;
-  if (!player || player.dead) return;
+  if (!settings.vr || !player || player.dead) return;
   const cam = document.getElementById('cam');
   if (!cam || !cam.object3D) return;
 
-  const dir = new THREE.Vector3();
-  cam.object3D.getWorldDirection(dir);
-  dir.y = 0;
+  ensureGazeTemps();
 
-  if (dir.lengthSq() > 0.0001) {
-    const desired = Math.atan2(dir.x, dir.z);
-    let gd = desired - playerAngle;
-    while (gd > Math.PI) gd -= Math.PI * 2;
-    while (gd < -Math.PI) gd += Math.PI * 2;
+  // 1. Camera world position
+  cam.object3D.getWorldPosition(_gCamPos);
 
-    const ts = getTurnSpeed(player.score);
-    if (Math.abs(gd) > 0.12) playerAngle += Math.sign(gd) * ts * 0.6;
+  // 2. Camera world orientation → forward direction (0,0,-1) in world space
+  cam.object3D.getWorldQuaternion(_gQuat);
+  _gDir.set(0, 0, -1).applyQuaternion(_gQuat);
+
+  // 3. Ray–ground-plane intersection.
+  //    Ray: P(t) = camPos + t * dir
+  //    Ground plane: y = 0  →  t = -camPos.y / dir.y
+  //    We only proceed when dir.y is meaningfully negative (ray hits ground).
+  if (_gDir.y < -0.01) {
+    const t = -_gCamPos.y / _gDir.y;
+    if (t > 0 && t < 800) {
+      const gx = _gCamPos.x + t * _gDir.x;
+      const gz = _gCamPos.z + t * _gDir.z;
+
+      // 4. Steer toward the gaze ground point.
+      //    Ignore when the point is almost directly below the camera
+      //    (very small t) to avoid jitter when looking straight down.
+      const head = player.segments[0];
+      const dx = gx - head.x, dz = gz - head.z;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+
+      if (dist > 5) {
+        const desired = Math.atan2(dx, dz);
+        let gd = desired - playerAngle;
+        while (gd >  Math.PI) gd -= Math.PI * 2;
+        while (gd < -Math.PI) gd += Math.PI * 2;
+
+        // Proportional steering: turn at full speed until aligned,
+        // clamped to one frame's worth of turn so we never overshoot.
+        const ts = getTurnSpeed(player.score);
+        playerAngle += Math.sign(gd) * Math.min(Math.abs(gd), ts);
+      }
+    }
   }
 
-  gazeBoostActive = cam.object3D.rotation.x < -1.85;
+  // 5. Boost via chin-tilt.
+  //    Default camera pitch is ~-PI/2 (looking straight down).
+  //    Nodding forward goes more negative; -2.0 rad ≈ -115° is a
+  //    noticeable but comfortable nod beyond vertical.
+  _gEuler.setFromQuaternion(_gQuat, 'YXZ');
+  gazeBoostActive = _gEuler.x < -2.0;
 }
 
-// ── Main loop ────────────────────────────────────────────────────
+// ── Main loop ─────────────────────────────────────────────────────
 function gameLoop() {
   if (!running) return;
   frameCount++;
@@ -1341,21 +1271,17 @@ function gameLoop() {
       if (keys.a) playerAngle -= ts;
       if (keys.d) playerAngle += ts;
     }
-    if (mouseDX !== 0) {
-      playerAngle += mouseDX * ts * 0.8;
-      mouseDX = 0;
-    }
+    if (mouseDX !== 0) { playerAngle += mouseDX * ts * 0.8; mouseDX = 0; }
 
+    // Gaze steering runs every frame in VR mode
     updateGazeSteering();
 
     const pHead = player.segments[0];
     const baseSpeed = Math.max(0.18, 0.28 - player.score * 0.0005);
 
-    if (keys.boost && boostFuel > 0) {
-      boostFuel = Math.max(0, boostFuel - 0.6);
-    } else if (!keys.boost) {
-      boostFuel = Math.min(100, boostFuel + 0.3);
-    }
+    if (keys.boost && boostFuel > 0) boostFuel = Math.max(0, boostFuel - 0.6);
+    else if (!keys.boost) boostFuel = Math.min(100, boostFuel + 0.3);
+
     const requestedBoost = keys.boost || gazeBoostActive;
     const actuallyBoosting = requestedBoost && boostFuel > 0;
     const speed = actuallyBoosting ? baseSpeed * 2.0 : baseSpeed;
@@ -1380,17 +1306,14 @@ function gameLoop() {
     updateSnakeSegments(player);
 
     const rig = document.getElementById('cameraRig');
-    const camHeight = 45 + player.score * 0.22;
-    rig.object3D.position.set(pHead.x, camHeight, pHead.z);
+    rig.object3D.position.set(pHead.x, 45 + player.score * 0.22, pHead.z);
     document.getElementById('playerLight').object3D.position.set(pHead.x, 6, pHead.z);
 
     if (Math.hypot(pHead.x, pHead.z) > BORDER_RADIUS) { killSnake(player); return; }
     for (const ast of asteroids) {
       const dx = pHead.x - ast.x, dz = pHead.z - ast.z;
-      if (dx * dx + dz * dz < (ast.r + player.currentRadius) * (ast.r + player.currentRadius)) {
-        killSnake(player);
-        return;
-      }
+      if (dx * dx + dz * dz < (ast.r + player.currentRadius) * (ast.r + player.currentRadius))
+        { killSnake(player); return; }
     }
   }
 
@@ -1402,18 +1325,15 @@ function gameLoop() {
     if (npc.dead) continue;
     const nHead = npc.segments[0];
     const nts = getTurnSpeed(npc.score);
-
     if (Math.hypot(nHead.x, nHead.z) > BORDER_RADIUS - 15) {
       npc.angle = Math.atan2(-nHead.z, -nHead.x) + (Math.random() - 0.5) * 0.5;
     } else if (Math.random() < 0.03) {
       npc.angle += (Math.random() - 0.5) * (nts / BASE_TURN_SPEED) * 1.5;
     }
-
     if (currentLevel >= 3 && player && !player.dead && Math.random() < 0.005) {
       const ph = player.segments[0];
       npc.angle = Math.atan2(ph.z - nHead.z, ph.x - nHead.x);
     }
-
     nHead.x += Math.cos(npc.angle) * npcSpeed;
     nHead.z += Math.sin(npc.angle) * npcSpeed;
     updateSnakeSegments(npc);
@@ -1447,7 +1367,7 @@ function gameLoop() {
   requestAnimationFrame(gameLoop);
 }
 
-// ── UI wiring ────────────────────────────────────────────────────
+// ── UI wiring ─────────────────────────────────────────────────────
 document.getElementById('flashScreen').addEventListener('click', () => showScreen('menuScreen'));
 document.getElementById('playBtn').addEventListener('click', () => startGame(1));
 document.getElementById('setupBtn').addEventListener('click', () => showScreen('setupScreen'));
@@ -1460,28 +1380,14 @@ document.getElementById('nextLevelBtn').addEventListener('click', () => nextLeve
 document.getElementById('setupDoneBtn').addEventListener('click', () => showScreen('menuScreen'));
 
 const musicToggle = document.getElementById('musicToggle');
-const sfxToggle = document.getElementById('sfxToggle');
-const vrToggle = document.getElementById('vrToggle');
-const adToggle = document.getElementById('adToggle');
+const sfxToggle   = document.getElementById('sfxToggle');
+const vrToggle    = document.getElementById('vrToggle');
+const adToggle    = document.getElementById('adToggle');
 
-musicToggle.addEventListener('click', () => {
-  settings.music = !settings.music;
-  musicToggle.classList.toggle('on', settings.music);
-  syncMusic();
-});
-sfxToggle.addEventListener('click', () => {
-  settings.sfx = !settings.sfx;
-  sfxToggle.classList.toggle('on', settings.sfx);
-});
-vrToggle.addEventListener('click', () => {
-  settings.vr = !settings.vr;
-  vrToggle.classList.toggle('on', settings.vr);
-  setVRMode(settings.vr);
-});
-adToggle.addEventListener('click', () => {
-  settings.adSteer = !settings.adSteer;
-  adToggle.classList.toggle('on', settings.adSteer);
-});
+musicToggle.addEventListener('click', () => { settings.music = !settings.music; musicToggle.classList.toggle('on', settings.music); syncMusic(); });
+sfxToggle.addEventListener('click',   () => { settings.sfx   = !settings.sfx;   sfxToggle.classList.toggle('on', settings.sfx); });
+vrToggle.addEventListener('click',    () => { settings.vr    = !settings.vr;    vrToggle.classList.toggle('on', settings.vr);   setVRMode(settings.vr); });
+adToggle.addEventListener('click',    () => { settings.adSteer = !settings.adSteer; adToggle.classList.toggle('on', settings.adSteer); });
 
 document.querySelectorAll('.diff-btn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -1491,7 +1397,6 @@ document.querySelectorAll('.diff-btn').forEach(btn => {
   });
 });
 
-// ── Input ─────────────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
   if (settings.adSteer) {
     if (e.code === 'KeyA') keys.a = true;
@@ -1514,10 +1419,9 @@ document.addEventListener('mousemove', e => {
 });
 document.addEventListener('mouseleave', () => { lastMouseX = null; });
 
-// Keep music usable after first click/tap
 window.addEventListener('pointerdown', () => { if (settings.music && running) syncMusic(); }, { passive: true });
 window.addEventListener('enter-vr', () => setVRMode(true));
-window.addEventListener('exit-vr', () => setVRMode(settings.vr));
+window.addEventListener('exit-vr',  () => setVRMode(settings.vr));
 </script>
 </body>
 </html>
